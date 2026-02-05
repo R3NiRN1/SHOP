@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  GROWER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(EDITOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Grower {
+  id        String   @id @default(cuid())
+  name      String
+  bio       String?
+  region    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Variety {
+  id          String   @id @default(cuid())
+  name        String
+  species     String?
+  description String?
+  price       Float?
+  stock       Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  growerId  String?
+  varietyId String?
+  grower    Grower?  @relation(fields: [growerId], references: [id])
+  variety   Variety? @relation(fields: [varietyId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  consentAt DateTime @default(now())
+  source    String?
+}
