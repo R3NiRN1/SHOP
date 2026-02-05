@@ -1,0 +1,14 @@
+node_modules/
+.pnpm-store/
+.next/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
