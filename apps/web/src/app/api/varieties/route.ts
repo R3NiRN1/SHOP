@@ -1,14 +1,14 @@
-import { PrismaClient } from '@prisma/client';
 import { NextRequest } from 'next/server';
-
-const prisma = new PrismaClient();
+import { getPrismaClient } from '../../../lib/prisma';
 
 export async function GET() {
+  const prisma = getPrismaClient();
   const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
   return Response.json(varieties);
 }
 
 export async function POST(req: NextRequest) {
+  const prisma = getPrismaClient();
   const data = await req.json();
   const { name, species, description, price, stock } = data;
   if (!name) {

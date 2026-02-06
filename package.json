@@ -4,6 +4,7 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "preflight": "node ./scripts/run-preflight.js",
+    "ci:local": "pnpm run preflight && pnpm install --frozen-lockfile && pnpm -C apps/web lint && pnpm -C apps/web build",
     "dev": "pnpm -C apps/web dev",
     "build": "pnpm -C apps/web build",
     "start": "pnpm -C apps/web start",

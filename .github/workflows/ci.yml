@@ -30,6 +30,16 @@ jobs:
 
       - name: Lint
         run: pnpm -C apps/web lint
+        env:
+          AUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: ci-admin-password
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
 
       - name: Build
         run: pnpm -C apps/web build
+        env:
+          AUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: ci-admin-password
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public

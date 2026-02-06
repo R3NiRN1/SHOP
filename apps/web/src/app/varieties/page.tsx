@@ -1,8 +1,7 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { getPrismaClient } from '../../lib/prisma';
 
 export default async function VarietiesPage() {
+  const prisma = getPrismaClient();
   const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
   return (
     <main style={{ maxWidth: 960, margin: '0 auto', padding: '48px 24px' }}>
