@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
 import { NextRequest } from 'next/server';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../../../lib/prisma';
 
 export async function GET() {
   const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });

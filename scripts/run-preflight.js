@@ -1,4 +1,4 @@
-const { existsSync, readFileSync } = require('fs');
+const { existsSync, readFileSync, readdirSync } = require('fs');
 const { join } = require('path');
 const { spawnSync } = require('child_process');
 
@@ -22,16 +22,41 @@ if (runPsScript() !== false) {
   process.exit(0);
 }
 
-const files = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
-const hasBom = files.some((file) => {
-  if (!existsSync(file)) return false;
+const isIgnoredDir = (dir) => dir === 'node_modules' || dir === '.git';
+const packageJsonFiles = [];
+
+const walk = (dir) => {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      if (isIgnoredDir(entry.name)) continue;
+      walk(join(dir, entry.name));
+    } else if (entry.isFile() && entry.name === 'package.json') {
+      packageJsonFiles.push(join(dir, entry.name));
+    }
+  }
+};
+
+walk('.');
+
+const hasBom = packageJsonFiles.some((file) => {
   const buffer = readFileSync(file);
   return buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
 });
 
 if (hasBom) {
-  console.error('UTF-8 BOM detected in workspace metadata files.');
+  console.error('UTF-8 BOM detected in package.json files.');
   process.exit(1);
 }
 
-console.log('No UTF-8 BOM detected in workspace metadata files.');
+if (!existsSync('pnpm-lock.yaml')) {
+  console.error('pnpm-lock.yaml is missing at the repository root.');
+  process.exit(1);
+}
+
+if (existsSync('yarn.lock') || existsSync('package-lock.json')) {
+  console.error('Unexpected lockfile detected (yarn.lock or package-lock.json).');
+  process.exit(1);
+}
+
+console.log('Preflight checks passed.');

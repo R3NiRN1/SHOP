@@ -4,8 +4,11 @@
 
 ```powershell
 cd <path-to-clone>\SHOP
+corepack enable
+pnpm -v # should match packageManager in package.json (10.0.0)
 pnpm run preflight
 pnpm install
+pnpm -C apps/web exec prisma generate
 pnpm dev
 ```
 

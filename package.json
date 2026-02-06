@@ -2,6 +2,15 @@
   "name": "shopb",
   "private": true,
   "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
   "scripts": {
     "preflight": "node ./scripts/run-preflight.js",
     "dev": "pnpm -C apps/web dev",

@@ -22,14 +22,35 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Debug
+        run: |
+          echo "PWD: $(pwd)"
+          Get-ChildItem -Force
+          if (Test-Path pnpm-lock.yaml) { echo "pnpm-lock.yaml present" } else { throw "pnpm-lock.yaml missing" }
+
       - name: Preflight
         run: pnpm run preflight
 
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Prisma generate
+        run: pnpm -C apps/web exec prisma generate
+        env:
+          DATABASE_URL: file:./ci.db
+
       - name: Lint
         run: pnpm -C apps/web lint
+        env:
+          AUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin
+          DATABASE_URL: file:./ci.db
 
       - name: Build
         run: pnpm -C apps/web build
+        env:
+          AUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin
+          DATABASE_URL: file:./ci.db
