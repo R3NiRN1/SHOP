@@ -11,6 +11,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug workspace
+        shell: pwsh
+        run: |
+          Get-Location
+          Get-ChildItem -Force
+          if (Test-Path "pnpm-lock.yaml") { Write-Host "pnpm-lock.yaml present" } else { Write-Error "pnpm-lock.yaml missing" }
+          Get-ChildItem -Path . -Filter package-lock.json -Recurse -File -ErrorAction SilentlyContinue
+          Get-ChildItem -Path . -Filter yarn.lock -Recurse -File -ErrorAction SilentlyContinue
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -19,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.0
           cache: pnpm
 
       - name: Preflight
@@ -28,8 +37,29 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Rebuild
+        run: pnpm rebuild
+
+      - name: Prisma Generate
+        run: pnpm -C apps/web exec prisma generate
+        env:
+          DATABASE_URL: file:./dev.db
+          NEXTAUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin
+
       - name: Lint
         run: pnpm -C apps/web lint
+        env:
+          DATABASE_URL: file:./dev.db
+          NEXTAUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin
 
       - name: Build
         run: pnpm -C apps/web build
+        env:
+          DATABASE_URL: file:./dev.db
+          NEXTAUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin

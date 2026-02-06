@@ -1,6 +1,7 @@
 import NextAuth, { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { PrismaClient } from '@prisma/client';
+import { getAdminCredentials } from '../../../../lib/env';
 
 const prisma = new PrismaClient();
 
@@ -16,9 +17,7 @@ export const authOptions: AuthOptions = {
       async authorize(credentials) {
         const email = credentials?.email?.toLowerCase() ?? '';
         const password = credentials?.password ?? '';
-        const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-        const adminPassword = process.env.ADMIN_PASSWORD;
-        if (!adminEmail || !adminPassword) return null;
+        const { email: adminEmail, password: adminPassword } = getAdminCredentials();
         if (email !== adminEmail || password !== adminPassword) return null;
         const user = await prisma.user.upsert({
           where: { email },
