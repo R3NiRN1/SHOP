@@ -11,6 +11,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Diagnostics
+        shell: pwsh
+        run: |
+          Get-ChildItem
+          if (-not (Test-Path pnpm-lock.yaml)) { throw "pnpm-lock.yaml missing" }
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -28,8 +34,26 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Prisma generate
+        run: pnpm -C apps/web exec prisma generate
+        env:
+          AUTH_SECRET: ci-placeholder
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+
       - name: Lint
         run: pnpm -C apps/web lint
+        env:
+          AUTH_SECRET: ci-placeholder
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
 
       - name: Build
         run: pnpm -C apps/web build
+        env:
+          AUTH_SECRET: ci-placeholder
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
