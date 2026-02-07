@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../lib/prisma';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
 
 export default async function VarietiesPage() {
   const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
