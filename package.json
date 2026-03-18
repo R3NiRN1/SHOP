@@ -8,5 +8,9 @@
     "build": "pnpm -C apps/web build",
     "start": "pnpm -C apps/web start",
     "lint": "pnpm -C apps/web lint"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": ">=10.0.0"
   }
 }
