@@ -1,0 +1,49 @@
+name: Agent PR Contract
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate PR template sections
+        env:
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+
+          body = os.environ.get('PR_BODY', '')
+          required = [
+              '## Summary',
+              '## Acceptance Criteria',
+              '## Changes',
+              '## Verification',
+              '## Risk & Rollback',
+              'ALLOW_CONFIG_CHANGE',
+          ]
+
+          missing = [section for section in required if section not in body]
+          if missing:
+              print('Missing required PR body sections:')
+              for section in missing:
+                  print(f'- {section}')
+              sys.exit(1)
+
+          print('PR body contains all required sections.')
+          PY
+
+      - name: Ensure diff against main is available
+        run: |
+          git fetch origin main
+          git diff --name-only origin/main...HEAD
