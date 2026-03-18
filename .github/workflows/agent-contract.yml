@@ -1,0 +1,71 @@
+name: PR Contract Checks
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  pr-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require PR sections + guard risky file touches
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python - <<'PY'
+          import os, subprocess, sys
+
+          body = os.environ.get("BODY") or ""
+          required = ["## Summary","## Acceptance Criteria","## Changes","## Verification","## Risk & Rollback"]
+          missing = [h for h in required if h not in body]
+          if missing:
+            print("Missing required PR sections:")
+            for h in missing: print(" -", h)
+            sys.exit(1)
+
+          subprocess.check_call(["git","init","-q"])
+          # GitHub Actions runner checks out the repo automatically in many workflows,
+          # but this job doesn't use actions/checkout to stay minimal.
+          # If you want risky-file checks, add actions/checkout and remove this early exit:
+          print("PR sections OK.")
+          PY
+
+      - uses: actions/checkout@v4
+
+      - name: Risky file changes require explicit PR note
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python - <<'PY'
+          import os, subprocess, sys
+
+          body = os.environ.get("BODY") or ""
+          base, head = os.environ["BASE"], os.environ["HEAD"]
+
+          risky_exact = {
+            "pnpm-workspace.yaml",
+            "pnpm-lock.yaml",
+            "next.config.js",
+            "next.config.mjs",
+            "turbo.json",
+          }
+          risky_prefixes = [".github/workflows/"]
+
+          touched = subprocess.check_output(["git","diff","--name-only",f"{base}..{head}"], text=True).splitlines()
+          risky = []
+          for f in touched:
+            if f in risky_exact or any(f.startswith(p) for p in risky_prefixes):
+              risky.append(f)
+          risky = sorted(set(risky))
+
+          if risky and "ALLOW_CONFIG_CHANGE" not in body:
+            print("Risky files changed. Add 'ALLOW_CONFIG_CHANGE' to PR body to acknowledge.")
+            for f in risky: print(" -", f)
+            sys.exit(1)
+
+          print("Risky file check OK.")
+          PY
