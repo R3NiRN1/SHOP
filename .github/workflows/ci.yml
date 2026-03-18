@@ -28,8 +28,22 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Prisma client smoke check
+        working-directory: apps/web
+        run: node -e "require('@prisma/client'); console.log('prisma client ok')"
+
       - name: Lint
         run: pnpm -C apps/web lint
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+          AUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin
 
       - name: Build
         run: pnpm -C apps/web build
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+          AUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin

@@ -3,8 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
 }
 
 enum Role {
@@ -27,6 +26,7 @@ model Grower {
   name      String
   bio       String?
   region    String?
+  stories   Story[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -38,6 +38,7 @@ model Variety {
   description String?
   price       Float?
   stock       Int?
+  stories     Story[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
