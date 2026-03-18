@@ -1,4 +1,4 @@
-name: PR Contract Checks
+﻿name: PR Contract Checks
 
 on:
   pull_request:
@@ -34,6 +34,8 @@ jobs:
 
       - uses: actions/checkout@v4
 
+        with:
+          fetch-depth: 0
       - name: Risky file changes require explicit PR note
         env:
           BODY: ${{ github.event.pull_request.body }}
@@ -69,3 +71,4 @@ jobs:
 
           print("Risky file check OK.")
           PY
+
