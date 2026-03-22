@@ -1,6 +1,8 @@
 node_modules/
 .pnpm-store/
 .next/
+apps/web/.next/
+apps/web/node-compile-cache/
 
 # Env files
 .env

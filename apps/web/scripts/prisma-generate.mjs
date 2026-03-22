@@ -1,9 +1,11 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 
 const REQUIRED_NODE_VERSION = [20, 19, 0];
 const REQUIRED_NODE_VERSION_TEXT = REQUIRED_NODE_VERSION.join('.');
+const CI_PLACEHOLDER_DATABASE_URL = 'postgresql://ci:ci@localhost:5432/ci?schema=public';
 
 const parseNodeVersion = (version) =>
   String(version)
@@ -33,7 +35,7 @@ const ensureSupportedNodeVersion = () => {
     [
       `Unsupported Node.js version: ${process.versions.node}`,
       `Required Node.js version: ${REQUIRED_NODE_VERSION_TEXT}`,
-      'CI uses Node 20 latest; upgrade Node (nvm use 20.19+)',
+      'CI uses Node 20.19.0; upgrade Node (nvm use 20.19.0)',
     ].join('\n'),
   );
   process.exit(1);
@@ -42,19 +44,23 @@ const ensureSupportedNodeVersion = () => {
 ensureSupportedNodeVersion();
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(import.meta.url);
+const prismaCliEntrypoint = require.resolve('prisma/build/index.js');
 
 const env = { ...process.env };
 if (!env.DATABASE_URL) {
-  env.DATABASE_URL = 'postgresql://ci:ci@localhost:5432/ci?schema=public';
+  env.DATABASE_URL = CI_PLACEHOLDER_DATABASE_URL;
 }
 
-const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-const result = spawnSync(pnpmCommand, ['exec', 'prisma', 'generate', '--schema', 'prisma/schema.prisma'], {
-  cwd: appDir,
-  stdio: 'inherit',
-  shell: process.platform === 'win32',
-  env,
-});
+const result = spawnSync(
+  process.execPath,
+  [prismaCliEntrypoint, 'generate', '--schema', 'prisma/schema.prisma'],
+  {
+    cwd: appDir,
+    stdio: 'inherit',
+    env,
+  },
+);
 
 if (result.status !== 0) {
   console.error('Prisma generate failed.');
