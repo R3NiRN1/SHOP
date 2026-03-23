@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 
 const prismaCommand = process.platform === 'win32' ? 'prisma.cmd' : 'prisma';
 const prismaBin = path.join(__dirname, '..', 'node_modules', '.bin', prismaCommand);
+import process from 'node:process';
 
 const env = { ...process.env };
 if (!env.DATABASE_URL) {
@@ -29,3 +30,18 @@ child.on('exit', (code) => {
     process.exit(code);
   }
 });
+const child = spawn(
+  process.platform === 'win32' ? 'npx.cmd' : 'npx',
+  ['prisma', 'generate'],
+  {
+    stdio: 'inherit',
+    env,
+    shell: true,
+  },
+);
+
+child.on('error', (err) => {
+  console.error(err);
+  process.exit(1);
+});
+child.on('exit', (code) => process.exit(code ?? 1));

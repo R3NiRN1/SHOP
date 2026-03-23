@@ -6,13 +6,28 @@
 - pnpm 10.x
 
 ## Quick start (PowerShell)
+## Quick start (Node 20.x, pnpm)
 
 ```powershell
 cd <path-to-clone>\SHOP
+corepack enable
+pnpm -v # should match packageManager in package.json (10.0.0)
 pnpm run preflight
 pnpm install
+pnpm -C apps/web exec prisma generate
 pnpm dev
 ```
+1. Install Node 20.x (use `.nvmrc` if you have nvm installed).
+2. Install pnpm (the repo pins pnpm via `packageManager`).
+3. Run the setup commands:
+
+   ```bash
+   cd <path-to-clone>/SHOP
+   pnpm run preflight
+   pnpm install
+   pnpm -C apps/web exec prisma generate
+   pnpm dev
+   ```
 
 The app runs at:
 
@@ -23,11 +38,19 @@ The app runs at:
 - Copy `apps/web/.env.example` to `apps/web/.env` for local development as needed.
 - CI uses build-only placeholder values (no real secrets).
 - Production secrets should be supplied via GitHub Actions Secrets.
+## Node + pnpm versions
+
+- Node is pinned in `.nvmrc` (20.19.0). If you use nvm4w on Windows, run `nvm install 20.19.0` and `nvm use 20.19.0`.
+- pnpm is pinned via `packageManager` in the root `package.json`. Verify with `pnpm -v`.
+## Environment configuration
+
+- For local development, create `apps/web/.env.local` with real secrets (for example `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and a real `DATABASE_URL`).
+- CI uses placeholder values for build-only steps so lint/build can run without production secrets.
 
 ## Validation commands
 
-```powershell
+```bash
 pnpm -w -r exec node -p "require('./package.json').name"
-pnpm -C apps/web lint
-pnpm -C apps/web build
+pnpm lint
+pnpm build
 ```

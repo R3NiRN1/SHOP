@@ -1,4 +1,10 @@
 import { getPrismaClient } from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
+import prisma from '../../lib/prisma';
+
+export const dynamic = 'force-dynamic';
+
+export const dynamic = 'force-dynamic';
 
 export default async function VarietiesPage() {
   const prisma = getPrismaClient();

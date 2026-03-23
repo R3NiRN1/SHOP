@@ -1,6 +1,11 @@
 import { NextRequest } from 'next/server';
 import { getPrismaClient } from '../../../lib/prisma';
 
+import { prisma } from '../../../../lib/prisma';
+
+import { prisma } from '../../../lib/prisma';
+import { NextRequest } from 'next/server';
+
 export async function GET() {
   const prisma = getPrismaClient();
   const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
