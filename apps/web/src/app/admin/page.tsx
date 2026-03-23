@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '../api/auth/[...nextauth]/route';
 import { hasRuntimeAuthConfig } from '../../lib/runtime-env';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminHomePage() {
   if (!hasRuntimeAuthConfig()) {
     return (

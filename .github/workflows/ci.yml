@@ -17,6 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug workspace
+        shell: pwsh
+        run: |
+          Get-Location
+          Get-ChildItem -Force
+          if (Test-Path "pnpm-lock.yaml") { Write-Host "pnpm-lock.yaml present" } else { Write-Error "pnpm-lock.yaml missing" }
+          Get-ChildItem -Path . -Filter package-lock.json -Recurse -File -ErrorAction SilentlyContinue
+          Get-ChildItem -Path . -Filter yarn.lock -Recurse -File -ErrorAction SilentlyContinue
       - name: Diagnostics
         shell: pwsh
         run: |

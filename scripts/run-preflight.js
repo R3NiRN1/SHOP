@@ -66,6 +66,27 @@ if (runPsScript() !== false) {
 }
 
 const files = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
+
+const disallowedLockfiles = new Set(['package-lock.json', 'yarn.lock']);
+
+const findDisallowedLockfiles = (startDir) => {
+  const entries = [];
+  const stack = [startDir];
+  while (stack.length) {
+    const current = stack.pop();
+    const dirEntries = require('fs').readdirSync(current, { withFileTypes: true });
+    for (const entry of dirEntries) {
+      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next') continue;
+      const fullPath = join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+      } else if (disallowedLockfiles.has(entry.name)) {
+        entries.push(fullPath);
+      }
+    }
+  }
+  return entries;
+};
 const hasBom = files.some((file) => {
   if (!existsSync(file)) return false;
   const buffer = readFileSync(file);
@@ -74,6 +95,13 @@ const hasBom = files.some((file) => {
 
 if (hasBom) {
   console.error('UTF-8 BOM detected in workspace metadata files.');
+  process.exit(1);
+}
+
+const disallowed = findDisallowedLockfiles(process.cwd());
+if (disallowed.length) {
+  console.error('Disallowed lockfiles detected. Remove these files so pnpm-lock.yaml is the only lockfile:');
+  disallowed.forEach((file) => console.error(`- ${file}`));
   process.exit(1);
 }
 

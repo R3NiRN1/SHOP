@@ -22,4 +22,13 @@ if ($foundBom) {
   exit 1
 }
 
+$disallowedLockfiles = Get-ChildItem -Path . -Recurse -File -Include package-lock.json, yarn.lock |
+  Where-Object { $_.FullName -notmatch "[\\/]node_modules[\\/]" -and $_.FullName -notmatch "[\\/]\\.git[\\/]" -and $_.FullName -notmatch "[\\/]\\.next[\\/]" }
+
+if ($disallowedLockfiles.Count -gt 0) {
+  Write-Error "Disallowed lockfiles detected. Remove these files so pnpm-lock.yaml is the only lockfile:"
+  $disallowedLockfiles | ForEach-Object { Write-Host "- $($_.FullName)" }
+  exit 1
+}
+
 Write-Host "No UTF-8 BOM detected in workspace metadata files."

@@ -18,6 +18,10 @@ The app runs at:
 
 - http://localhost:3001
 
+## Node + pnpm versions
+
+- Node is pinned in `.nvmrc` (20.19.0). If you use nvm4w on Windows, run `nvm install 20.19.0` and `nvm use 20.19.0`.
+- pnpm is pinned via `packageManager` in the root `package.json`. Verify with `pnpm -v`.
 ## Environment configuration
 
 - For local development, create `apps/web/.env.local` with real secrets (for example `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and a real `DATABASE_URL`).
