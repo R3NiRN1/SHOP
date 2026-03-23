@@ -43,3 +43,7 @@ pnpm -w -r exec node -p "require('./package.json').name"
 pnpm lint
 pnpm build
 ```
+
+## Copilot MCP
+
+To configure the GitHub web Copilot coding agent MCP settings for this repository, see [`docs/copilot-coding-agent-mcp.md`](docs/copilot-coding-agent-mcp.md).
