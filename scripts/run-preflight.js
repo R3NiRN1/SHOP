@@ -3,6 +3,9 @@ const { join } = require('path');
 const { spawnSync } = require('child_process');
 
 const REQUIRED_NODE_VERSION = [20, 19, 0];
+const METADATA_FILES = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
+const JSON_FILES_TO_VALIDATE = ['package.json', join('apps', 'web', 'package.json')];
+const DISALLOWED_LOCKFILES = new Set(['package-lock.json', 'yarn.lock']);
 
 const parseNodeVersion = (version) =>
   String(version)
@@ -59,60 +62,55 @@ const runPsScript = () => {
   return false;
 };
 
-ensureSupportedNodeVersion();
-
-if (runPsScript() !== false) {
-  process.exit(0);
-}
-
-const isIgnoredDir = (dir) => dir === 'node_modules' || dir === '.git';
-const packageJsonFiles = [];
-
-const walk = (dir) => {
-  const entries = readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      if (isIgnoredDir(entry.name)) continue;
-      walk(join(dir, entry.name));
-    } else if (entry.isFile() && entry.name === 'package.json') {
-      packageJsonFiles.push(join(dir, entry.name));
-    }
+const validateJsonParse = (file) => {
+  try {
+    JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    console.error(`Invalid JSON in ${file}: ${error.message}`);
+    process.exit(1);
   }
 };
-
-walk('.');
-
-const hasBom = packageJsonFiles.some((file) => {
-const files = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
-
-const disallowedLockfiles = new Set(['package-lock.json', 'yarn.lock']);
 
 const findDisallowedLockfiles = (startDir) => {
   const entries = [];
   const stack = [startDir];
+
   while (stack.length) {
     const current = stack.pop();
-    const dirEntries = require('fs').readdirSync(current, { withFileTypes: true });
+    const dirEntries = readdirSync(current, { withFileTypes: true });
+
     for (const entry of dirEntries) {
       if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next') continue;
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
         stack.push(fullPath);
-      } else if (disallowedLockfiles.has(entry.name)) {
+      } else if (DISALLOWED_LOCKFILES.has(entry.name)) {
         entries.push(fullPath);
       }
     }
   }
+
   return entries;
 };
-const hasBom = files.some((file) => {
+
+ensureSupportedNodeVersion();
+
+for (const file of JSON_FILES_TO_VALIDATE) {
+  validateJsonParse(file);
+}
+
+if (runPsScript() !== false) {
+  process.exit(0);
+}
+
+const hasBom = METADATA_FILES.some((file) => {
   if (!existsSync(file)) return false;
   const buffer = readFileSync(file);
   return buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
 });
 
 if (hasBom) {
-  console.error('UTF-8 BOM detected in package.json files.');
+  console.error('UTF-8 BOM detected in workspace metadata files.');
   process.exit(1);
 }
 
@@ -121,12 +119,6 @@ if (!existsSync('pnpm-lock.yaml')) {
   process.exit(1);
 }
 
-if (existsSync('yarn.lock') || existsSync('package-lock.json')) {
-  console.error('Unexpected lockfile detected (yarn.lock or package-lock.json).');
-  process.exit(1);
-}
-
-console.log('Preflight checks passed.');
 const disallowed = findDisallowedLockfiles(process.cwd());
 if (disallowed.length) {
   console.error('Disallowed lockfiles detected. Remove these files so pnpm-lock.yaml is the only lockfile:');
@@ -134,4 +126,4 @@ if (disallowed.length) {
   process.exit(1);
 }
 
-console.log('No UTF-8 BOM detected in workspace metadata files.');
+console.log('Preflight checks passed.');
