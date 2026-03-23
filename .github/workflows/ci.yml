@@ -7,20 +7,45 @@ on:
 jobs:
   web:
     runs-on: windows-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      AUTH_SECRET: ci-placeholder-not-for-prod
+      NEXTAUTH_SECRET: ci-placeholder-not-for-prod
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: admin
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Debug workspace
+        shell: pwsh
+        run: |
+          Get-Location
+          Get-ChildItem -Force
+          if (Test-Path "pnpm-lock.yaml") { Write-Host "pnpm-lock.yaml present" } else { Write-Error "pnpm-lock.yaml missing" }
+          Get-ChildItem -Path . -Filter package-lock.json -Recurse -File -ErrorAction SilentlyContinue
+          Get-ChildItem -Path . -Filter yarn.lock -Recurse -File -ErrorAction SilentlyContinue
+      - name: Diagnostics
+        shell: pwsh
+        run: |
+          Get-ChildItem
+          if (-not (Test-Path pnpm-lock.yaml)) { throw "pnpm-lock.yaml missing" }
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.0.0
+          run_install: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.0
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Debug
         run: |
@@ -54,3 +79,15 @@ jobs:
           ADMIN_EMAIL: admin@example.com
           ADMIN_PASSWORD: admin
           DATABASE_URL: file:./ci.db
+      - name: Doctor
+        run: pnpm run doctor
+
+      - name: Prisma client smoke check
+        working-directory: apps/web
+        run: node -e "require('@prisma/client'); console.log('prisma client ok')"
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
