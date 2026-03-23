@@ -17,6 +17,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Diagnostics
+        shell: pwsh
+        run: |
+          Get-ChildItem
+          if (-not (Test-Path pnpm-lock.yaml)) { throw "pnpm-lock.yaml missing" }
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:

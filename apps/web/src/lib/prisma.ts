@@ -1,16 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 
-const accelerateUrl =
-  process.env.PRISMA_ACCELERATE_URL ?? 'prisma+postgres://localhost:5432/ci?api_key=ci';
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+};
 
-const prisma = globalThis.prisma ?? new PrismaClient({ accelerateUrl });
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma;
-}
-
-export default prisma;
-
-declare global {
-  var prisma: PrismaClient | undefined;
+  globalForPrisma.prisma = prisma;
 }

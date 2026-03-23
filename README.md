@@ -1,31 +1,31 @@
 # SHOP
 
-## Windows 11 quick start (PowerShell)
+## Quick start (Node 20.x, pnpm)
 
-```powershell
-cd <path-to-clone>\SHOP
-corepack enable
-pnpm run preflight
-pnpm setup
-pnpm dev
-```
+1. Install Node 20.x (use `.nvmrc` if you have nvm installed).
+2. Install pnpm (the repo pins pnpm via `packageManager`).
+3. Run the setup commands:
+
+   ```bash
+   cd <path-to-clone>/SHOP
+   pnpm run preflight
+   pnpm install
+   pnpm -C apps/web exec prisma generate
+   pnpm dev
+   ```
 
 The app runs at:
 
 - http://localhost:3001
 
-## Notes
+## Environment configuration
 
-- Build/lint use placeholder env values in CI only. Provide real secrets for runtime auth.
-- Copy `apps/web/.env.example` to `apps/web/.env` and fill in values for local auth.
-- Runtime auth stays disabled until `AUTH_SECRET` or `NEXTAUTH_SECRET` is set to a non-placeholder value.
-- Prisma generate uses a CI-safe placeholder `DATABASE_URL` during install, but local/runtime DB access still requires a real connection string.
-- Prisma 7 requires a driver adapter or `PRISMA_ACCELERATE_URL`; provide one for local runtime DB access.
+- For local development, create `apps/web/.env.local` with real secrets (for example `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and a real `DATABASE_URL`).
+- CI uses placeholder values for build-only steps so lint/build can run without production secrets.
 
 ## Validation commands
 
-```powershell
-pnpm run doctor
+```bash
 pnpm -w -r exec node -p "require('./package.json').name"
 pnpm lint
 pnpm build

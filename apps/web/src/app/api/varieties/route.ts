@@ -1,7 +1,5 @@
-import prisma from '../../../lib/prisma';
+import { prisma } from '../../../lib/prisma';
 import { NextRequest } from 'next/server';
-
-export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
