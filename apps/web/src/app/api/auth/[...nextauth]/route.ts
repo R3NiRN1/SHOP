@@ -1,5 +1,7 @@
 import NextAuth, { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import { prisma } from '../../../../lib/prisma';
+import { env } from '../../../../env';
 import { PrismaClient } from '@prisma/client';
 import { getAdminCredentials } from '../../../../lib/env';
 
@@ -10,6 +12,7 @@ import { authRuntimeState, getAuthSecret, hasRuntimeAuthConfig } from '../../../
 export const authOptions: AuthOptions = {
   secret: getAuthSecret() ?? undefined,
   session: { strategy: 'jwt' },
+  secret: env.AUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -22,6 +25,9 @@ export const authOptions: AuthOptions = {
 
         const email = credentials?.email?.toLowerCase() ?? '';
         const password = credentials?.password ?? '';
+        const adminEmail = env.ADMIN_EMAIL.toLowerCase();
+        const adminPassword = env.ADMIN_PASSWORD;
+        if (!adminEmail || !adminPassword) return null;
         const { email: adminEmail, password: adminPassword } = getAdminCredentials();
         if (email !== adminEmail || password !== adminPassword) return null;
         const user = await prisma.user.upsert({

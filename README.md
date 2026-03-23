@@ -2,6 +2,15 @@
 
 ## Quick start (Node 20.x, pnpm)
 
+```powershell
+cd <path-to-clone>\SHOP
+corepack enable
+pnpm -v # should match packageManager in package.json (10.0.0)
+pnpm run preflight
+pnpm install
+pnpm -C apps/web exec prisma generate
+pnpm dev
+```
 1. Install Node 20.x (use `.nvmrc` if you have nvm installed).
 2. Install pnpm (the repo pins pnpm via `packageManager`).
 3. Run the setup commands:

@@ -1,10 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$targets = @(
-  "pnpm-workspace.yaml"
-)
-
-$targets += Get-ChildItem -Path . -Filter package.json -Recurse -File |
+$targets = Get-ChildItem -Path . -Filter package.json -Recurse -File |
   Where-Object { $_.FullName -notmatch "[\\/]node_modules[\\/]" } |
   ForEach-Object { $_.FullName }
 
@@ -22,6 +18,21 @@ if ($foundBom) {
   exit 1
 }
 
+if (-not (Test-Path "pnpm-lock.yaml")) {
+  Write-Error "pnpm-lock.yaml is missing at the repository root."
+  exit 1
+}
+
+$unexpectedLocks = Get-ChildItem -Path . -Include "yarn.lock","package-lock.json" -Recurse -File |
+  Where-Object { $_.FullName -notmatch "[\\/]node_modules[\\/]" }
+
+if ($unexpectedLocks.Count -gt 0) {
+  $unexpectedLocks | ForEach-Object { Write-Host "Unexpected lockfile: $($_.FullName)" }
+  Write-Error "Unexpected lockfile detected (yarn.lock or package-lock.json)."
+  exit 1
+}
+
+Write-Host "Preflight checks passed."
 $disallowedLockfiles = Get-ChildItem -Path . -Recurse -File -Include package-lock.json, yarn.lock |
   Where-Object { $_.FullName -notmatch "[\\/]node_modules[\\/]" -and $_.FullName -notmatch "[\\/]\\.git[\\/]" -and $_.FullName -notmatch "[\\/]\\.next[\\/]" }
 
