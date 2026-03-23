@@ -1,4 +1,4 @@
-## Summary
+﻿## Summary
 Describe the user-facing purpose of the change.
 
 ## Acceptance Criteria
@@ -13,3 +13,7 @@ Describe the user-facing purpose of the change.
 ## Risk & Rollback
 - Risk: Describe the main risk.
 - Rollback: Describe how to undo the change if needed.
+
+<!-- If you changed any risky files (workflows/, pnpm-lock.yaml, pnpm-workspace.yaml, package.json, apps/web/package.json),
+     add this token somewhere in the PR body: ALLOW_CONFIG_CHANGE
+-->
