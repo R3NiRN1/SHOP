@@ -3,9 +3,8 @@ const { join } = require('path');
 const { spawnSync } = require('child_process');
 
 const REQUIRED_NODE_VERSION = [20, 19, 0];
-const METADATA_FILES = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
 const JSON_FILES_TO_VALIDATE = ['package.json', join('apps', 'web', 'package.json')];
-const WORKSPACE_METADATA_FILES = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
+const WORKSPACE_METADATA_FILES = ['pnpm-workspace.yaml', ...JSON_FILES_TO_VALIDATE];
 const DISALLOWED_LOCKFILES = new Set(['package-lock.json', 'yarn.lock']);
 
 const parseNodeVersion = (version) =>
@@ -65,10 +64,12 @@ const runPsScript = () => {
 const validateJsonParse = (file) => {
   try {
     JSON.parse(readFileSync(file, 'utf8'));
-  } catch (error) {
-    console.error(`Invalid JSON in ${file}: ${error.message}`);
+  } catch (_error) {
+    console.error(`Invalid JSON in ${file}; fix commas/quotes/BOM.`);
     process.exit(1);
   }
+};
+
 const hasUtf8Bom = (file) => {
   if (!existsSync(file)) return false;
   const buffer = readFileSync(file);
@@ -103,22 +104,6 @@ ensureSupportedNodeVersion();
 for (const file of JSON_FILES_TO_VALIDATE) {
   validateJsonParse(file);
 }
-
-if (runPsScript() !== false) {
-  process.exit(0);
-}
-
-const hasBom = METADATA_FILES.some((file) => {
-  if (!existsSync(file)) return false;
-  const buffer = readFileSync(file);
-  return buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
-});
-
-if (hasBom) {
-  console.error('UTF-8 BOM detected in workspace metadata files.');
-  process.exit(1);
-
-ensureSupportedNodeVersion();
 
 if (runPsScript() !== false) {
   process.exit(0);
