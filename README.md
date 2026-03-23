@@ -29,12 +29,12 @@ The app runs at:
 
 ## Node + pnpm versions
 
-- Node is pinned in `.nvmrc` (20.19.0). If you use nvm4w on Windows, run `nvm install 20.19.0` and `nvm use 20.19.0`.
-- pnpm is pinned via `packageManager` in the root `package.json`. Verify with `pnpm -v`.
+- Node is pinned in `.nvmrc` and both `package.json` files via `engines` (20.19.0). If you use nvm4w on Windows, run `nvm install 20.19.0` and `nvm use 20.19.0`.
+- pnpm is pinned via `packageManager` and `engines` (10.0.0). Verify with `pnpm -v`.
 ## Environment configuration
 
 - For local development, create `apps/web/.env.local` with real secrets (for example `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and a real `DATABASE_URL`).
-- CI uses placeholder values for build-only steps so lint/build can run without production secrets.
+- CI uses placeholder values for build-only steps so lint/build can run without production secrets. Runtime auth remains disabled until a real `AUTH_SECRET`/`NEXTAUTH_SECRET` is provided.
 
 ## Validation commands
 

@@ -2,6 +2,10 @@
   "name": "shopb",
   "private": true,
   "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": "20.19.0",
+    "pnpm": "10.0.0"
+  },
   "scripts": {
     "preflight": "node ./scripts/run-preflight.js",
     "doctor": "node ./scripts/doctor.mjs",
