@@ -5,6 +5,7 @@ const { spawnSync } = require('child_process');
 const REQUIRED_NODE_VERSION = [20, 19, 0];
 const METADATA_FILES = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
 const JSON_FILES_TO_VALIDATE = ['package.json', join('apps', 'web', 'package.json')];
+const WORKSPACE_METADATA_FILES = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
 const DISALLOWED_LOCKFILES = new Set(['package-lock.json', 'yarn.lock']);
 
 const parseNodeVersion = (version) =>
@@ -31,12 +32,10 @@ const ensureSupportedNodeVersion = () => {
     return;
   }
 
-  const current = process.versions.node;
-  const required = REQUIRED_NODE_VERSION.join('.');
   console.error(
     [
-      `Unsupported Node.js version: ${current}`,
-      `Required Node.js version: ${required}`,
+      `Unsupported Node.js version: ${process.versions.node}`,
+      `Required Node.js version: ${REQUIRED_NODE_VERSION.join('.')}`,
       'CI uses Node 20 latest; upgrade Node (nvm use 20.19+)',
     ].join('\n'),
   );
@@ -59,6 +58,7 @@ const runPsScript = () => {
       process.exit(result.status ?? 1);
     }
   }
+
   return false;
 };
 
@@ -69,6 +69,10 @@ const validateJsonParse = (file) => {
     console.error(`Invalid JSON in ${file}: ${error.message}`);
     process.exit(1);
   }
+const hasUtf8Bom = (file) => {
+  if (!existsSync(file)) return false;
+  const buffer = readFileSync(file);
+  return buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
 };
 
 const findDisallowedLockfiles = (startDir) => {
@@ -81,6 +85,7 @@ const findDisallowedLockfiles = (startDir) => {
 
     for (const entry of dirEntries) {
       if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next') continue;
+
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
         stack.push(fullPath);
@@ -110,6 +115,16 @@ const hasBom = METADATA_FILES.some((file) => {
 });
 
 if (hasBom) {
+  console.error('UTF-8 BOM detected in workspace metadata files.');
+  process.exit(1);
+
+ensureSupportedNodeVersion();
+
+if (runPsScript() !== false) {
+  process.exit(0);
+}
+
+if (WORKSPACE_METADATA_FILES.some(hasUtf8Bom)) {
   console.error('UTF-8 BOM detected in workspace metadata files.');
   process.exit(1);
 }
