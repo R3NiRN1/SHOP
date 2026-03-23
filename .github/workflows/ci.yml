@@ -7,6 +7,12 @@ on:
 jobs:
   web:
     runs-on: windows-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      AUTH_SECRET: ci-placeholder-not-for-prod
+      NEXTAUTH_SECRET: ci-placeholder-not-for-prod
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: admin
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,12 +27,17 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 10.0.0
+          run_install: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.0
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Preflight
         run: pnpm run preflight
@@ -34,26 +45,15 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Prisma generate
-        run: pnpm -C apps/web exec prisma generate
-        env:
-          AUTH_SECRET: ci-placeholder
-          ADMIN_EMAIL: admin@example.com
-          ADMIN_PASSWORD: admin
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      - name: Doctor
+        run: pnpm run doctor
+
+      - name: Prisma client smoke check
+        working-directory: apps/web
+        run: node -e "require('@prisma/client'); console.log('prisma client ok')"
 
       - name: Lint
-        run: pnpm -C apps/web lint
-        env:
-          AUTH_SECRET: ci-placeholder
-          ADMIN_EMAIL: admin@example.com
-          ADMIN_PASSWORD: admin
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+        run: pnpm lint
 
       - name: Build
-        run: pnpm -C apps/web build
-        env:
-          AUTH_SECRET: ci-placeholder
-          ADMIN_EMAIL: admin@example.com
-          ADMIN_PASSWORD: admin
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+        run: pnpm build

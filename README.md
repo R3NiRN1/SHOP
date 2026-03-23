@@ -27,6 +27,6 @@ The app runs at:
 
 ```bash
 pnpm -w -r exec node -p "require('./package.json').name"
-pnpm -C apps/web lint
-pnpm -C apps/web build
+pnpm lint
+pnpm build
 ```
