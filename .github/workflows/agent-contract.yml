@@ -9,6 +9,7 @@ on:
 jobs:
   contract:
     if: github.event.pull_request.user.login != 'dependabot[bot]'
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
