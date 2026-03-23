@@ -1,11 +1,9 @@
-import { prisma } from '../../lib/prisma';
-import prisma from '../../lib/prisma';
-
-export const dynamic = 'force-dynamic';
+import { getPrisma } from '../../lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export default async function VarietiesPage() {
+  const prisma = getPrisma();
   const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
   return (
     <main style={{ maxWidth: 960, margin: '0 auto', padding: '48px 24px' }}>

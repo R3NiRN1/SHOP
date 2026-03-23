@@ -6,16 +6,15 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "next lint",
-    "prisma:generate": "prisma generate"
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "postinstall": "node ./scripts/prisma-generate.mjs"
   },
   "dependencies": {
     "@prisma/client": "7.3.0",
     "@auth/prisma-adapter": "^1.1.0",
-    "next": "16.1.7",
+    "next": "16.1.6",
     "next-auth": "^4.22.1",
     "react": "19.0.0",
     "react-dom": "19.0.0"

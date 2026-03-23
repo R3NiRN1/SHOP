@@ -72,6 +72,14 @@ jobs:
           ADMIN_PASSWORD: admin
           DATABASE_URL: file:./ci.db
 
+      - name: Typecheck
+        run: pnpm -C apps/web typecheck
+        env:
+          AUTH_SECRET: ci-placeholder-not-for-prod
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: admin
+          DATABASE_URL: file:./ci.db
+
       - name: Build
         run: pnpm -C apps/web build
         env:
@@ -79,15 +87,10 @@ jobs:
           ADMIN_EMAIL: admin@example.com
           ADMIN_PASSWORD: admin
           DATABASE_URL: file:./ci.db
+
       - name: Doctor
         run: pnpm run doctor
 
       - name: Prisma client smoke check
         working-directory: apps/web
         run: node -e "require('@prisma/client'); console.log('prisma client ok')"
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Build
-        run: pnpm build

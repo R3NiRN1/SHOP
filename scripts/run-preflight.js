@@ -3,6 +3,8 @@ const { join } = require('path');
 const { spawnSync } = require('child_process');
 
 const REQUIRED_NODE_VERSION = [20, 19, 0];
+const WORKSPACE_METADATA_FILES = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
+const DISALLOWED_LOCKFILES = new Set(['package-lock.json', 'yarn.lock']);
 
 const parseNodeVersion = (version) =>
   String(version)
@@ -28,12 +30,10 @@ const ensureSupportedNodeVersion = () => {
     return;
   }
 
-  const current = process.versions.node;
-  const required = REQUIRED_NODE_VERSION.join('.');
   console.error(
     [
-      `Unsupported Node.js version: ${current}`,
-      `Required Node.js version: ${required}`,
+      `Unsupported Node.js version: ${process.versions.node}`,
+      `Required Node.js version: ${REQUIRED_NODE_VERSION.join('.')}`,
       'CI uses Node 20 latest; upgrade Node (nvm use 20.19+)',
     ].join('\n'),
   );
@@ -56,7 +56,37 @@ const runPsScript = () => {
       process.exit(result.status ?? 1);
     }
   }
+
   return false;
+};
+
+const hasUtf8Bom = (file) => {
+  if (!existsSync(file)) return false;
+  const buffer = readFileSync(file);
+  return buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
+};
+
+const findDisallowedLockfiles = (startDir) => {
+  const entries = [];
+  const stack = [startDir];
+
+  while (stack.length) {
+    const current = stack.pop();
+    const dirEntries = readdirSync(current, { withFileTypes: true });
+
+    for (const entry of dirEntries) {
+      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next') continue;
+
+      const fullPath = join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+      } else if (DISALLOWED_LOCKFILES.has(entry.name)) {
+        entries.push(fullPath);
+      }
+    }
+  }
+
+  return entries;
 };
 
 ensureSupportedNodeVersion();
@@ -65,54 +95,8 @@ if (runPsScript() !== false) {
   process.exit(0);
 }
 
-const isIgnoredDir = (dir) => dir === 'node_modules' || dir === '.git';
-const packageJsonFiles = [];
-
-const walk = (dir) => {
-  const entries = readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      if (isIgnoredDir(entry.name)) continue;
-      walk(join(dir, entry.name));
-    } else if (entry.isFile() && entry.name === 'package.json') {
-      packageJsonFiles.push(join(dir, entry.name));
-    }
-  }
-};
-
-walk('.');
-
-const hasBom = packageJsonFiles.some((file) => {
-const files = ['pnpm-workspace.yaml', 'package.json', join('apps', 'web', 'package.json')];
-
-const disallowedLockfiles = new Set(['package-lock.json', 'yarn.lock']);
-
-const findDisallowedLockfiles = (startDir) => {
-  const entries = [];
-  const stack = [startDir];
-  while (stack.length) {
-    const current = stack.pop();
-    const dirEntries = require('fs').readdirSync(current, { withFileTypes: true });
-    for (const entry of dirEntries) {
-      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next') continue;
-      const fullPath = join(current, entry.name);
-      if (entry.isDirectory()) {
-        stack.push(fullPath);
-      } else if (disallowedLockfiles.has(entry.name)) {
-        entries.push(fullPath);
-      }
-    }
-  }
-  return entries;
-};
-const hasBom = files.some((file) => {
-  if (!existsSync(file)) return false;
-  const buffer = readFileSync(file);
-  return buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
-});
-
-if (hasBom) {
-  console.error('UTF-8 BOM detected in package.json files.');
+if (WORKSPACE_METADATA_FILES.some(hasUtf8Bom)) {
+  console.error('UTF-8 BOM detected in workspace metadata files.');
   process.exit(1);
 }
 
@@ -121,12 +105,6 @@ if (!existsSync('pnpm-lock.yaml')) {
   process.exit(1);
 }
 
-if (existsSync('yarn.lock') || existsSync('package-lock.json')) {
-  console.error('Unexpected lockfile detected (yarn.lock or package-lock.json).');
-  process.exit(1);
-}
-
-console.log('Preflight checks passed.');
 const disallowed = findDisallowedLockfiles(process.cwd());
 if (disallowed.length) {
   console.error('Disallowed lockfiles detected. Remove these files so pnpm-lock.yaml is the only lockfile:');
@@ -134,4 +112,4 @@ if (disallowed.length) {
   process.exit(1);
 }
 
-console.log('No UTF-8 BOM detected in workspace metadata files.');
+console.log('Preflight checks passed.');
