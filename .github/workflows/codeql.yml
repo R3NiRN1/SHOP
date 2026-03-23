@@ -12,10 +12,6 @@ permissions:
   actions: read
   contents: read
   security-events: write
-    branches: ['**']
-  pull_request:
-  schedule:
-    - cron: '0 6 * * 1'
 
 jobs:
   analyze:
@@ -30,17 +26,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+          run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
 
-      - name: Analyze
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
 
