@@ -16,5 +16,7 @@
       "prisma",
       "sharp"
     ]
+    "lint": "pnpm -C apps/web lint",
+    "ci:local": "pnpm install --frozen-lockfile && pnpm -C apps/web exec prisma generate && pnpm -C apps/web lint && pnpm -C apps/web build"
   }
 }
