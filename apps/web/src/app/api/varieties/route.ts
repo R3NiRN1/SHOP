@@ -1,16 +1,16 @@
 import { NextRequest } from 'next/server';
+import { getPrisma } from '../../../lib/prisma';
 
-import { prisma } from '../../../../lib/prisma';
-
-import { prisma } from '../../../lib/prisma';
-import { NextRequest } from 'next/server';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const prisma = getPrisma();
   const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
   return Response.json(varieties);
 }
 
 export async function POST(req: NextRequest) {
+  const prisma = getPrisma();
   const data = await req.json();
   const { name, species, description, price, stock } = data;
   if (!name) {
