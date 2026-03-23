@@ -44,6 +44,6 @@ pnpm lint
 pnpm build
 ```
 
-## Copilot MCP
+## Copilot coding agent MCP
 
-To configure the GitHub web Copilot coding agent MCP settings for this repository, see [`docs/copilot-coding-agent-mcp.md`](docs/copilot-coding-agent-mcp.md).
+For the GitHub web Copilot coding agent MCP setup, follow [`docs/copilot-coding-agent-mcp.md`](docs/copilot-coding-agent-mcp.md).
