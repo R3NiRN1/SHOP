@@ -6,6 +6,8 @@ const REQUIRED_NODE_VERSION = [20, 19, 0];
 const JSON_FILES_TO_VALIDATE = ['package.json', join('apps', 'web', 'package.json')];
 const WORKSPACE_METADATA_FILES = ['pnpm-workspace.yaml', ...JSON_FILES_TO_VALIDATE];
 const DISALLOWED_LOCKFILES = new Set(['package-lock.json', 'yarn.lock']);
+const EXCLUDED_DIRS = new Set(['node_modules', '.git', '.next', '.turbo', 'dist', 'build']);
+const TOLERATED_READDIR_ERROR_CODES = new Set(['ENOENT', 'ENOTDIR', 'EPERM']);
 
 const parseNodeVersion = (version) =>
   String(version)
@@ -76,16 +78,30 @@ const hasUtf8Bom = (file) => {
   return buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
 };
 
+const shouldSkipDirectory = (entryName) => EXCLUDED_DIRS.has(entryName);
+
+const readDirectorySafely = (directory) => {
+  try {
+    return readdirSync(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error && TOLERATED_READDIR_ERROR_CODES.has(error.code)) {
+      return null;
+    }
+    throw error;
+  }
+};
+
 const findDisallowedLockfiles = (startDir) => {
   const entries = [];
   const stack = [startDir];
 
   while (stack.length) {
     const current = stack.pop();
-    const dirEntries = readdirSync(current, { withFileTypes: true });
+    const dirEntries = readDirectorySafely(current);
+    if (!dirEntries) continue;
 
     for (const entry of dirEntries) {
-      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.next') continue;
+      if (entry.isDirectory() && shouldSkipDirectory(entry.name)) continue;
 
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
