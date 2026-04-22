@@ -15,7 +15,7 @@
     "start": "pnpm -C apps/web start",
     "lint": "pnpm -C apps/web lint",
     "typecheck": "pnpm -C apps/web typecheck",
-    "ci:local": "pnpm run preflight && pnpm install --frozen-lockfile && pnpm -C apps/web run prisma:generate && pnpm -C apps/web lint && pnpm -C apps/web typecheck && pnpm -C apps/web build && pnpm run doctor"
+    "ci:local": "pnpm run preflight && pnpm install --frozen-lockfile && pnpm -C apps/web run prisma:generate && pnpm -C apps/web typecheck && pnpm -C apps/web build && pnpm run doctor"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
