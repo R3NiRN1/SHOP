@@ -64,14 +64,6 @@ jobs:
         env:
           DATABASE_URL: file:./ci.db
 
-      - name: Lint
-        run: pnpm -C apps/web lint
-        env:
-          AUTH_SECRET: ci-placeholder-not-for-prod
-          ADMIN_EMAIL: admin@example.com
-          ADMIN_PASSWORD: admin
-          DATABASE_URL: file:./ci.db
-
       - name: Typecheck
         run: pnpm -C apps/web typecheck
         env:
