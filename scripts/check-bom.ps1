@@ -1,10 +1,69 @@
 $ErrorActionPreference = "Stop"
 
+$excludedDirs = @("node_modules", ".next", ".git", ".turbo", "dist", "build")
 $excludedPattern = "[\\/](node_modules|\\.next|\\.git|\\.turbo|dist|build)[\\/]"
+$toleratedErrorIds = @(
+  "PathNotFound,Microsoft.PowerShell.Commands.GetChildItemCommand",
+  "DirIOError,Microsoft.PowerShell.Commands.GetChildItemCommand",
+  "ItemNotFoundException"
+)
 
-$targets = Get-ChildItem -Path . -Filter package.json -Recurse -File -ErrorAction SilentlyContinue |
-  Where-Object { $_.FullName -notmatch $excludedPattern } |
-  ForEach-Object { $_.FullName }
+function Get-DirectoryEntriesSafe {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  try {
+    return Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop
+  }
+  catch {
+    if ($toleratedErrorIds -contains $_.FullyQualifiedErrorId) {
+      return @()
+    }
+
+    if ($_.Exception -is [System.IO.DirectoryNotFoundException] -or $_.Exception -is [System.IO.IOException]) {
+      return @()
+    }
+
+    throw
+  }
+}
+
+function Get-WorkspaceFiles {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string[]]$MatchNames
+  )
+
+  $results = New-Object System.Collections.Generic.List[string]
+  $stack = New-Object System.Collections.Generic.Stack[string]
+  $stack.Push((Resolve-Path ".").Path)
+
+  while ($stack.Count -gt 0) {
+    $current = $stack.Pop()
+    $entries = Get-DirectoryEntriesSafe -Path $current
+
+    foreach ($entry in $entries) {
+      if ($entry.PSIsContainer) {
+        if ($excludedDirs -contains $entry.Name) {
+          continue
+        }
+
+        $stack.Push($entry.FullName)
+        continue
+      }
+
+      if ($MatchNames -contains $entry.Name -and $entry.FullName -notmatch $excludedPattern) {
+        $results.Add($entry.FullName)
+      }
+    }
+  }
+
+  return $results
+}
+
+$targets = Get-WorkspaceFiles -MatchNames @("package.json")
 
 $foundBom = $false
 foreach ($target in $targets) {
@@ -25,11 +84,10 @@ if (-not (Test-Path "pnpm-lock.yaml")) {
   exit 1
 }
 
-$disallowedLockfiles = Get-ChildItem -Path . -Include "yarn.lock","package-lock.json" -Recurse -File -ErrorAction SilentlyContinue |
-  Where-Object { $_.FullName -notmatch $excludedPattern }
+$disallowedLockfiles = Get-WorkspaceFiles -MatchNames @("yarn.lock", "package-lock.json")
 
 if ($disallowedLockfiles.Count -gt 0) {
-  $disallowedLockfiles | ForEach-Object { Write-Host "Unexpected lockfile: $($_.FullName)" }
+  $disallowedLockfiles | ForEach-Object { Write-Host "Unexpected lockfile: $($_)" }
   Write-Error "Unexpected lockfile detected (yarn.lock or package-lock.json)."
   exit 1
 }
