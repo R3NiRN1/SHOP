@@ -1,15 +1,15 @@
 import 'dotenv/config';
 import { defineConfig } from 'prisma/config';
 
-const command = process.argv.slice(2).join(' ').toLowerCase();
-const isGenerateCommand = command.includes('generate');
+const args = process.argv.map((arg) => String(arg).toLowerCase());
+const isGenerateCommand = args.includes('generate');
 
-const datasourceUrl = process.env.DATABASE_URL
-  ?? (isGenerateCommand ? 'postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public' : null);
+const PLACEHOLDER_DATABASE_URL = 'postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public';
+const datasourceUrl = process.env.DATABASE_URL ?? (isGenerateCommand ? PLACEHOLDER_DATABASE_URL : null);
 
 if (!datasourceUrl) {
   throw new Error(
-    'DATABASE_URL is required for this Prisma command. Set DATABASE_URL in your environment before running Prisma operations other than generate.',
+    'DATABASE_URL is required for Prisma commands other than generate. Set DATABASE_URL before running migrate, db, studio, or other Prisma operations.',
   );
 }
 
