@@ -60,7 +60,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Prisma generate
-        run: pnpm -C apps/web exec prisma generate
+        run: pnpm run prisma:generate
         env:
           DATABASE_URL: file:./ci.db
 
