@@ -1,93 +1,172 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+
+type Variety = {
+  id: string;
+  name: string;
+  species: string | null;
+  description: string | null;
+  price: number | null;
+  stock: number | null;
+};
+
+type VarietiesResponse =
+  | {
+      varieties: Variety[];
+      source: 'database' | 'starter';
+    }
+  | Variety[];
+
+const emptyForm = { name: '', species: '', description: '', price: '', stock: '' };
 
 export default function AdminVarieties() {
   const { data: session, status } = useSession();
-  const [varieties, setVarieties] = useState<any[]>([]);
-  const [form, setForm] = useState({ name: '', species: '', description: '', price: '', stock: '' });
+  const router = useRouter();
+  const [varieties, setVarieties] = useState<Variety[]>([]);
+  const [source, setSource] = useState<'database' | 'starter'>('database');
+  const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (status === 'loading') return;
-    if (!session) redirect('/api/auth/signin');
-  }, [session, status]);
+    if (!session) router.replace('/api/auth/signin');
+  }, [router, session, status]);
 
   useEffect(() => {
     async function fetchData() {
       const res = await fetch('/api/varieties');
-      const data = await res.json();
-      setVarieties(data);
+      const data = (await res.json()) as VarietiesResponse;
+      if (Array.isArray(data)) {
+        setVarieties(data);
+        setSource('database');
+        return;
+      }
+      setVarieties(data.varieties);
+      setSource(data.source);
     }
-    fetchData();
+
+    fetchData().catch(() => setError('Unable to load varieties.'));
   }, []);
 
-  async function handleSubmit(e: any) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError('');
-    if (!form.name) {
-      setError('Name is required');
+
+    if (!form.name.trim()) {
+      setError('Name is required.');
       return;
     }
+
+    setIsSaving(true);
     try {
       const res = await fetch('/api/varieties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name,
-          species: form.species || undefined,
-          description: form.description || undefined,
-          price: form.price ? parseFloat(form.price) : undefined,
-          stock: form.stock ? parseInt(form.stock) : undefined,
+          species: form.species,
+          description: form.description,
+          price: form.price,
+          stock: form.stock,
         }),
       });
+
       if (res.ok) {
-        const newVariety = await res.json();
-        setVarieties([...varieties, newVariety]);
-        setForm({ name: '', species: '', description: '', price: '', stock: '' });
-      } else {
-        const msg = await res.text();
-        setError(msg);
+        const newVariety = (await res.json()) as Variety;
+        setVarieties((current) => [...current, newVariety].sort((a, b) => a.name.localeCompare(b.name)));
+        setForm(emptyForm);
+        setSource('database');
+        return;
       }
+
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(body?.error ?? 'Unable to create variety.');
     } catch {
-      setError('Error creating variety');
+      setError('Error creating variety.');
+    } finally {
+      setIsSaving(false);
     }
   }
 
+  if (status === 'loading') {
+    return <main className="section-shell page-shell">Loading admin…</main>;
+  }
+
   return (
-    <main style={{ maxWidth: 960, margin: '0 auto', padding: '48px 24px' }}>
-      <h1 style={{ fontSize: 28, marginBottom: 24 }}>Admin Varieties</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={handleSubmit} style={{ marginBottom: 32 }}>
-        <div style={{ marginBottom: 12 }}>
-          <label>Name: <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>
+    <main className="section-shell page-shell admin-shell">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Admin</p>
+          <h1>Manage varieties</h1>
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <label>Species: <input value={form.species} onChange={(e) => setForm({ ...form, species: e.target.value })} /></label>
+        <a className="button" href="/varieties">
+          View catalogue
+        </a>
+      </div>
+
+      {source === 'starter' && (
+        <p className="notice">Starter catalogue is visible because the database is not configured or unavailable.</p>
+      )}
+      {error && <p className="error-message">{error}</p>}
+
+      <form className="admin-form" onSubmit={handleSubmit}>
+        <label>
+          Name
+          <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+        </label>
+        <label>
+          Species
+          <input value={form.species} onChange={(event) => setForm({ ...form, species: event.target.value })} />
+        </label>
+        <label>
+          Description
+          <textarea
+            value={form.description}
+            onChange={(event) => setForm({ ...form, description: event.target.value })}
+            rows={4}
+          />
+        </label>
+        <div className="form-row">
+          <label>
+            Price (£)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.price}
+              onChange={(event) => setForm({ ...form, price: event.target.value })}
+            />
+          </label>
+          <label>
+            Stock
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={form.stock}
+              onChange={(event) => setForm({ ...form, stock: event.target.value })}
+            />
+          </label>
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <label>Description: <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label>Price (£): <input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></label>
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label>Stock: <input type="number" step="1" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} /></label>
-        </div>
-        <button type="submit">Create Variety</button>
+        <button className="button primary" type="submit" disabled={isSaving}>
+          {isSaving ? 'Saving…' : 'Create variety'}
+        </button>
       </form>
-      <h2 style={{ fontSize: 20, marginBottom: 12 }}>Existing Varieties</h2>
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        {varieties.map((v) => (
-          <li key={v.id} style={{ borderBottom: '1px solid #eee', padding: '12px 0' }}>
-            <strong>{v.name}</strong>
-            {v.price != null && <> (£{v.price.toFixed(2)})</>}
-            {v.stock != null && <> [Stock: {v.stock}]</>}
-          </li>
+
+      <h2>Existing varieties</h2>
+      <div className="admin-list">
+        {varieties.map((variety) => (
+          <article key={variety.id}>
+            <strong>{variety.name}</strong>
+            <span>{variety.species ?? 'Species TBC'}</span>
+            <span>{variety.stock == null ? 'Stock TBC' : `${variety.stock} packets`}</span>
+          </article>
         ))}
-      </ul>
+      </div>
     </main>
   );
 }

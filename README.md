@@ -27,6 +27,18 @@ The app runs at:
 
 - http://localhost:3001
 
+
+## Usable MVP
+
+The storefront now works before production services are connected:
+
+- `/` presents the seed shop landing page with featured varieties and enquiry calls to action.
+- `/varieties` shows the live catalogue when `DATABASE_URL` is configured, otherwise it falls back to starter catalogue data so the app remains browsable.
+- `/admin` and `/admin/varieties` are reserved for authenticated catalogue management once auth and database environment variables are configured.
+- `/api/varieties` returns `{ varieties, source }`; `source` is `database` for live data or `starter` for fallback data.
+
+Manual ordering is handled by email at `hello@example.org` until checkout is added.
+
 ## Node + pnpm versions
 
 - Node is pinned in `.nvmrc` and both `package.json` files via `engines` (20.19.0). If you use nvm4w on Windows, run `nvm install 20.19.0` and `nvm use 20.19.0`.
