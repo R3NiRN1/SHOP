@@ -1,23 +1,48 @@
-import { getPrisma } from '../../lib/prisma';
+import Link from 'next/link';
+import { formatCurrency, formatStock, getCatalogVarieties } from '../../lib/catalog';
 
 export const dynamic = 'force-dynamic';
 
 export default async function VarietiesPage() {
-  const prisma = getPrisma();
-  const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
+  const { varieties, source } = await getCatalogVarieties();
+
   return (
-    <main style={{ maxWidth: 960, margin: '0 auto', padding: '48px 24px' }}>
-      <h1 style={{ fontSize: 32, marginBottom: 24 }}>Varieties</h1>
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        {varieties.map((v) => (
-          <li key={v.id} style={{ borderBottom: '1px solid #eee', padding: '12px 0' }}>
-            <h3 style={{ margin: 0 }}>{v.name}</h3>
-            {v.species && <p style={{ margin: '4px 0', opacity: 0.8 }}>{v.species}</p>}
-            {v.price != null && <p style={{ margin: '4px 0' }}>Price: £{v.price.toFixed(2)}</p>}
-            {v.stock != null && <p style={{ margin: '4px 0' }}>Stock: {v.stock}</p>}
-          </li>
+    <main className="section-shell page-shell">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Catalogue</p>
+          <h1>Seed varieties</h1>
+        </div>
+        <Link className="button" href="/">
+          Back home
+        </Link>
+      </div>
+
+      {source === 'starter' && (
+        <p className="notice">
+          Showing starter catalogue data. Configure DATABASE_URL to publish live stock from the admin area.
+        </p>
+      )}
+
+      <div className="product-grid catalogue-grid">
+        {varieties.map((variety) => (
+          <article className="product-card" key={variety.id}>
+            <p className="species">{variety.species ?? 'Open-pollinated seed'}</p>
+            <h2>{variety.name}</h2>
+            <p>{variety.description ?? 'Grower notes and provenance details are coming soon.'}</p>
+            <div className="card-footer">
+              <strong>{formatCurrency(variety.price)}</strong>
+              <span>{formatStock(variety.stock)}</span>
+            </div>
+            <a
+              className="button primary"
+              href={`mailto:hello@example.org?subject=${encodeURIComponent(`Seed enquiry: ${variety.name}`)}`}
+            >
+              Enquire about this seed
+            </a>
+          </article>
         ))}
-      </ul>
+      </div>
     </main>
   );
 }

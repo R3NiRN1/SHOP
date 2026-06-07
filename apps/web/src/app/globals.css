@@ -1,6 +1,274 @@
-/* You can place global CSS here */
-html, body {
+:root {
+  color-scheme: light;
+  --background: #f8f3e8;
+  --foreground: #1d2a1d;
+  --muted: #596758;
+  --card: #fffaf0;
+  --border: #ded3bd;
+  --accent: #326b3b;
+  --accent-dark: #214b29;
+  --notice: #fff4c7;
+  --error: #b42318;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
   margin: 0;
   padding: 0;
-  font-family: system-ui, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 7vw, 5.75rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  margin-bottom: 1.25rem;
+}
+
+h2 {
+  font-size: clamp(1.6rem, 3vw, 2.35rem);
+  line-height: 1.05;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.section-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.page-shell {
+  padding: 48px 0;
+}
+
+.hero {
+  padding: 72px 0 36px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 32px;
+  align-items: stretch;
+}
+
+.hero-card,
+.product-card,
+.info-grid article,
+.admin-form,
+.admin-list article {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--card) 88%, white);
+  box-shadow: 0 18px 45px rgb(53 42 20 / 8%);
+}
+
+.hero-card {
+  padding: 28px;
+  align-self: center;
+}
+
+.eyebrow,
+.species {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lede {
+  max-width: 760px;
+  color: var(--muted);
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  line-height: 1.65;
+}
+
+.button-row,
+.card-footer,
+.section-heading,
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.button-row,
+.section-heading {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.section-heading {
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0 18px;
+  background: transparent;
+  color: var(--accent-dark);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.button.primary {
+  background: var(--accent);
+  color: white;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.section-block {
+  padding: 36px 0;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.catalogue-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+  padding: 22px;
+}
+
+.product-card p:not(.species) {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.card-footer {
+  justify-content: space-between;
+  margin-top: auto;
+  color: var(--muted);
+}
+
+.card-footer strong {
+  color: var(--foreground);
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.info-grid article {
+  padding: 24px;
+}
+
+.notice,
+.error-message {
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.notice {
+  background: var(--notice);
+  color: #594306;
+}
+
+.error-message {
+  background: #fee4e2;
+  color: var(--error);
+}
+
+.admin-shell h2 {
+  margin-top: 32px;
+}
+
+.admin-form {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+}
+
+.admin-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.admin-form input,
+.admin-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: white;
+  color: var(--foreground);
+}
+
+.form-row > * {
+  flex: 1;
+}
+
+.admin-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-list article {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 16px;
+}
+
+.admin-list span {
+  color: var(--muted);
+}
+
+@media (max-width: 800px) {
+  .hero-grid,
+  .product-grid,
+  .info-grid,
+  .admin-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
 }
