@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response;
 
   const parsed = parseVarietyMutation(await request.json().catch(() => null));
-  if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
+  if (parsed.ok === false) return Response.json({ error: parsed.error }, { status: 400 });
 
   const prisma = getPrisma();
   const duplicate = await prisma.variety.findUnique({ where: { slug: parsed.value.slug } });
