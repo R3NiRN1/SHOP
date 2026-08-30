@@ -1,62 +1,81 @@
 import { getPrisma } from './prisma';
-import { hasRuntimeDatabaseUrl } from './runtime-env';
+import { hasRuntimeDatabaseUrl, isStarterCatalogEnabled } from './runtime-env';
 
 export type CatalogVariety = {
   id: string;
+  slug: string;
   name: string;
   species: string | null;
   description: string | null;
   price: number | null;
   stock: number | null;
+  published: boolean;
 };
 
 export type CatalogResult = {
   varieties: CatalogVariety[];
-  source: 'database' | 'starter';
+  source: 'database' | 'starter' | 'unavailable';
 };
+
+type DatabaseVariety = Omit<CatalogVariety, 'price'> & {
+  price: { toString(): string } | number | null;
+};
+
+export const serializeVariety = (variety: DatabaseVariety): CatalogVariety => ({
+  ...variety,
+  price: variety.price == null ? null : Number(variety.price.toString()),
+});
 
 export const starterVarieties: CatalogVariety[] = [
   {
     id: 'starter-crimson-flower-broad-bean',
-    name: 'Crimson Flower Broad Bean',
+    slug: 'crimson-flower-broad-bean-demo',
+    name: 'Crimson Flower Broad Bean — demo',
     species: 'Vicia faba',
-    description:
-      'A striking heritage broad bean with crimson flowers, selected for exposed gardens and rich early-season flavour.',
+    description: 'Demonstration catalogue entry. Replace with verified grower, provenance, price and stock data before publication.',
     price: 3.25,
     stock: 24,
+    published: true,
   },
   {
     id: 'starter-czar-runner-bean',
-    name: 'Czar Runner Bean',
+    slug: 'czar-runner-bean-demo',
+    name: 'Czar Runner Bean — demo',
     species: 'Phaseolus coccineus',
-    description:
-      'Reliable white-flowered runner bean for fresh pods or drying. A practical staple for community seed saving.',
+    description: 'Demonstration catalogue entry. Replace with verified grower, provenance, price and stock data before publication.',
     price: 3.5,
     stock: 18,
+    published: true,
   },
   {
     id: 'starter-green-in-snow-mustard',
-    name: 'Green in Snow Mustard',
+    slug: 'green-in-snow-mustard-demo',
+    name: 'Green in Snow Mustard — demo',
     species: 'Brassica juncea',
-    description:
-      'Hardy leafy mustard for autumn and winter harvests, with peppery leaves and strong regrowth after cutting.',
+    description: 'Demonstration catalogue entry. Replace with verified grower, provenance, price and stock data before publication.',
     price: 2.75,
     stock: 31,
+    published: true,
   },
 ];
 
 export async function getCatalogVarieties(): Promise<CatalogResult> {
   if (!hasRuntimeDatabaseUrl()) {
-    return { varieties: starterVarieties, source: 'starter' };
+    return isStarterCatalogEnabled()
+      ? { varieties: starterVarieties, source: 'starter' }
+      : { varieties: [], source: 'unavailable' };
   }
 
   try {
     const prisma = getPrisma();
-    const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
-    return { varieties, source: 'database' };
+    const varieties = await prisma.variety.findMany({
+      where: { published: true },
+      orderBy: { name: 'asc' },
+    });
+    return { varieties: varieties.map(serializeVariety), source: 'database' };
   } catch (error) {
-    console.error('Falling back to starter catalogue after database read failed', error);
-    return { varieties: starterVarieties, source: 'starter' };
+    console.error('Catalogue database read failed', error);
+    return { varieties: [], source: 'unavailable' };
   }
 }
 

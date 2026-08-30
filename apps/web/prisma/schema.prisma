@@ -33,14 +33,18 @@ model Grower {
 
 model Variety {
   id          String   @id @default(cuid())
+  slug        String   @unique
   name        String
   species     String?
   description String?
-  price       Float?
+  price       Decimal? @db.Decimal(10, 2)
   stock       Int?
+  published   Boolean  @default(false)
   stories     Story[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([published, name])
 }
 
 model Story {
@@ -49,8 +53,8 @@ model Story {
   content   String
   growerId  String?
   varietyId String?
-  grower    Grower?  @relation(fields: [growerId], references: [id])
-  variety   Variety? @relation(fields: [varietyId], references: [id])
+  grower    Grower?  @relation(fields: [growerId], references: [id], onDelete: SetNull)
+  variety   Variety? @relation(fields: [varietyId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
