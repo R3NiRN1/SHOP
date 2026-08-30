@@ -10,6 +10,17 @@ import { VarietiesManager } from './varieties-manager';
 
 export const dynamic = 'force-dynamic';
 
+async function loadAdminVarieties() {
+  try {
+    const prisma = getPrisma();
+    const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
+    return { ok: true as const, varieties: varieties.map(serializeVariety) };
+  } catch (error) {
+    console.error('Admin catalogue load failed', error);
+    return { ok: false as const };
+  }
+}
+
 export default async function AdminVarietiesPage() {
   const runtime = authRuntimeState();
   if (!runtime.enabled) {
@@ -29,12 +40,8 @@ export default async function AdminVarietiesPage() {
     return <main className="section-shell page-shell"><h1>Access denied</h1><p>Administrator access is required.</p></main>;
   }
 
-  try {
-    const prisma = getPrisma();
-    const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
-    return <VarietiesManager initialVarieties={varieties.map(serializeVariety)} />;
-  } catch (error) {
-    console.error('Admin catalogue load failed', error);
+  const catalogue = await loadAdminVarieties();
+  if (!catalogue.ok) {
     return (
       <main className="section-shell page-shell">
         <p className="eyebrow">Admin</p>
@@ -44,4 +51,6 @@ export default async function AdminVarietiesPage() {
       </main>
     );
   }
+
+  return <VarietiesManager initialVarieties={catalogue.varieties} />;
 }
