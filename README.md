@@ -1,61 +1,85 @@
 # SHOP
 
-## Quick start (Node 20.x, pnpm)
+A small Next.js seed catalogue/storefront with a protected catalogue-admin surface. The current ordering path is enquiry-based; checkout and payment processing are not implemented.
 
-```powershell
-cd <path-to-clone>\SHOP
+## Runtime model
+
+- Public catalogue reads expose only `Variety.published = true` records.
+- Catalogue writes live under `/api/admin/*` and require an authenticated `ADMIN` session.
+- Production database failure fails closed: sample inventory is never substituted.
+- Starter entries are available only when `ENABLE_STARTER_CATALOG=true` outside production, and are explicitly labelled as demo data.
+- Enquiry links render only when `SHOP_CONTACT_EMAIL` is configured with a non-placeholder address.
+- `/api/health` is a liveness endpoint. `/api/ready` checks database connectivity plus required auth/contact configuration.
+
+## Toolchain
+
+- Node.js 20.19.0
+- pnpm 10.0.0
+- Next.js 16.3.3
+- NextAuth.js 4.24.15
+- Prisma 7.5.0 / PostgreSQL
+- Vitest 4.1.11
+
+## Local setup
+
+```bash
 corepack enable
-pnpm -v # should match packageManager in package.json (10.0.0)
 pnpm run preflight
 pnpm install
 pnpm -C apps/web exec prisma generate
 pnpm dev
 ```
-1. Install Node 20.x (use `.nvmrc` if you have nvm installed).
-2. Install pnpm (the repo pins pnpm via `packageManager`).
-3. Run the setup commands:
 
-   ```bash
-   cd <path-to-clone>/SHOP
-   pnpm run preflight
-   pnpm install
-   pnpm -C apps/web exec prisma generate
-   pnpm dev
-   ```
+The app runs at `http://localhost:3001`.
 
-The app runs at:
+For a browsable local demo without PostgreSQL, set `ENABLE_STARTER_CATALOG=true`. This switch is ignored in production.
 
-- http://localhost:3001
-
-
-## Usable MVP
-
-The storefront now works before production services are connected:
-
-- `/` presents the seed shop landing page with featured varieties and enquiry calls to action.
-- `/varieties` shows the live catalogue when `DATABASE_URL` is configured, otherwise it falls back to starter catalogue data so the app remains browsable.
-- `/admin` and `/admin/varieties` are reserved for authenticated catalogue management once auth and database environment variables are configured.
-- `/api/varieties` returns `{ varieties, source }`; `source` is `database` for live data or `starter` for fallback data.
-
-Manual ordering is handled by email at `hello@example.org` until checkout is added.
-
-## Node + pnpm versions
-
-- Node is pinned in `.nvmrc` and both `package.json` files via `engines` (20.19.0). If you use nvm4w on Windows, run `nvm install 20.19.0` and `nvm use 20.19.0`.
-- pnpm is pinned via `packageManager` and `engines` (10.0.0). Verify with `pnpm -v`.
 ## Environment configuration
 
-- For local development, create `apps/web/.env.local` with real secrets (for example `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and a real `DATABASE_URL`).
-- CI uses placeholder values for build-only steps so lint/build can run without production secrets. Runtime auth remains disabled until a real `AUTH_SECRET`/`NEXTAUTH_SECRET` is provided.
+Create `apps/web/.env.local` for local development. Production values belong in the deployment platform's configuration store.
 
-## Validation commands
+Required for production admin/catalogue operation:
+
+- `DATABASE_URL` — PostgreSQL connection URL.
+- `AUTH_SECRET` (or `NEXTAUTH_SECRET`) — strong random NextAuth secret.
+- `ADMIN_EMAIL` — administrator login email.
+- `ADMIN_PASSWORD` — strong administrator password.
+- `SHOP_CONTACT_EMAIL` — real public ordering/enquiry address.
+
+Optional:
+
+- `PRISMA_ACCELERATE_URL` — reserved for Prisma deployment configuration.
+- `ENABLE_STARTER_CATALOG=true` — development/demo only; ignored under `NODE_ENV=production`.
+
+CI placeholder values are explicitly rejected by runtime-auth checks.
+
+## Database migrations
+
+The repository now contains a reviewed initial PostgreSQL migration under `apps/web/prisma/migrations`.
+
+For a new database:
 
 ```bash
-pnpm -w -r exec node -p "require('./package.json').name"
-pnpm lint
-pnpm build
+pnpm -C apps/web exec prisma migrate deploy
 ```
 
-## Copilot coding agent MCP
+If an existing database was created with `prisma db push`, do not run the initial migration blindly. Compare the live schema with `schema.prisma`, back up the database, and baseline it deliberately before using `prisma migrate deploy`.
 
-For the GitHub web Copilot coding agent MCP setup, follow [`docs/copilot-coding-agent-mcp.md`](docs/copilot-coding-agent-mcp.md).
+## Verification
+
+```bash
+pnpm run preflight
+pnpm install --frozen-lockfile
+pnpm -C apps/web exec prisma generate
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm run doctor
+```
+
+Pull requests are expected to keep all CI gates green. Security/configuration changes also require the repository's `ALLOW_CONFIG_CHANGE` PR acknowledgement.
+
+## Security
+
+See [`SECURITY.md`](SECURITY.md). Real secrets must never be committed.

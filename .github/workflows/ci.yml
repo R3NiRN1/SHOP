@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   web:
     runs-on: windows-latest
@@ -13,23 +16,10 @@ jobs:
       NEXTAUTH_SECRET: ci-placeholder-not-for-prod
       ADMIN_EMAIL: admin@example.com
       ADMIN_PASSWORD: admin
+      SHOP_CONTACT_EMAIL: ci@shop.test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Debug workspace
-        shell: pwsh
-        run: |
-          Get-Location
-          Get-ChildItem -Force
-          if (Test-Path "pnpm-lock.yaml") { Write-Host "pnpm-lock.yaml present" } else { Write-Error "pnpm-lock.yaml missing" }
-          Get-ChildItem -Path . -Filter package-lock.json -Recurse -File -ErrorAction SilentlyContinue
-          Get-ChildItem -Path . -Filter yarn.lock -Recurse -File -ErrorAction SilentlyContinue
-      - name: Diagnostics
-        shell: pwsh
-        run: |
-          Get-ChildItem
-          if (-not (Test-Path pnpm-lock.yaml)) { throw "pnpm-lock.yaml missing" }
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -47,50 +37,26 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
-      - name: Debug
-        run: |
-          echo "PWD: $(pwd)"
-          Get-ChildItem -Force
-          if (Test-Path pnpm-lock.yaml) { echo "pnpm-lock.yaml present" } else { throw "pnpm-lock.yaml missing" }
-
       - name: Preflight
         run: pnpm run preflight
 
-      - name: Install
+      - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Prisma generate
         run: pnpm -C apps/web exec prisma generate
-        env:
-          DATABASE_URL: file:./ci.db
 
       - name: Lint
         run: pnpm -C apps/web lint
-        env:
-          AUTH_SECRET: ci-placeholder-not-for-prod
-          ADMIN_EMAIL: admin@example.com
-          ADMIN_PASSWORD: admin
-          DATABASE_URL: file:./ci.db
 
       - name: Typecheck
         run: pnpm -C apps/web typecheck
-        env:
-          AUTH_SECRET: ci-placeholder-not-for-prod
-          ADMIN_EMAIL: admin@example.com
-          ADMIN_PASSWORD: admin
-          DATABASE_URL: file:./ci.db
+
+      - name: Unit tests
+        run: pnpm -C apps/web test
 
       - name: Build
         run: pnpm -C apps/web build
-        env:
-          AUTH_SECRET: ci-placeholder-not-for-prod
-          ADMIN_EMAIL: admin@example.com
-          ADMIN_PASSWORD: admin
-          DATABASE_URL: file:./ci.db
 
       - name: Doctor
         run: pnpm run doctor
-
-      - name: Prisma client smoke check
-        working-directory: apps/web
-        run: node -e "require('@prisma/client'); console.log('prisma client ok')"
