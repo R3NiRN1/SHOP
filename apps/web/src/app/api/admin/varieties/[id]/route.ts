@@ -21,7 +21,7 @@ export async function PATCH(request: Request, { params }: Context) {
   if (!auth.ok) return auth.response;
 
   const parsed = parseVarietyMutation(await request.json().catch(() => null));
-  if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
+  if (parsed.ok === false) return Response.json({ error: parsed.error }, { status: 400 });
 
   const { id } = await params;
   const prisma = getPrisma();
