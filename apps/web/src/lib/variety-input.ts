@@ -60,9 +60,9 @@ export function parseVarietyMutation(input: unknown): VarietyMutationResult {
   if (!slug) return { ok: false, error: 'A valid slug is required.' };
 
   const price = parsePrice(data.price);
-  if (!price.ok) return { ok: false, error: price.error };
+  if (price.ok === false) return { ok: false, error: price.error };
   const stock = parseStock(data.stock);
-  if (!stock.ok) return { ok: false, error: stock.error };
+  if (stock.ok === false) return { ok: false, error: stock.error };
 
   const species = text(data.species, 160);
   const description = text(data.description, 5000);
