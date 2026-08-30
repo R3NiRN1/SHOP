@@ -1,14 +1,11 @@
-const isCi = process.env.CI === 'true' || process.env.CI === '1';
-
 const requiredEnv = (key: string) => {
   const value = process.env[key];
-  if (value) return value;
-  if (isCi) return `ci-placeholder-${key.toLowerCase()}`;
+  if (typeof value === 'string' && value.trim().length > 0) return value;
   throw new Error(`Missing required environment variable: ${key}`);
 };
 
 export const getAdminCredentials = () => ({
-  email: requiredEnv('ADMIN_EMAIL'),
+  email: requiredEnv('ADMIN_EMAIL').trim().toLowerCase(),
   password: requiredEnv('ADMIN_PASSWORD'),
 });
 
