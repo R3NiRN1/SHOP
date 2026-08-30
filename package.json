@@ -14,8 +14,9 @@
     "build": "pnpm -C apps/web build",
     "start": "pnpm -C apps/web start",
     "lint": "pnpm -C apps/web lint",
+    "test": "pnpm -C apps/web test",
     "typecheck": "pnpm -C apps/web typecheck",
-    "ci:local": "pnpm install --frozen-lockfile && pnpm -C apps/web exec prisma generate && pnpm -C apps/web lint && pnpm -C apps/web typecheck && pnpm -C apps/web build"
+    "ci:local": "pnpm install --frozen-lockfile && pnpm -C apps/web exec prisma generate && pnpm -C apps/web lint && pnpm -C apps/web typecheck && pnpm -C apps/web test && pnpm -C apps/web build"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
