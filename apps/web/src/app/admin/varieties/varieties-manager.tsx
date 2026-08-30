@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 
 type Variety = {
   id: string;
@@ -23,6 +23,10 @@ type FormState = {
   published: boolean;
 };
 
+type VarietiesManagerProps = {
+  initialVarieties: Variety[];
+};
+
 const emptyForm: FormState = {
   name: '',
   slug: '',
@@ -33,23 +37,19 @@ const emptyForm: FormState = {
   published: false,
 };
 
-export function VarietiesManager() {
-  const [varieties, setVarieties] = useState<Variety[]>([]);
+export function VarietiesManager({ initialVarieties }: VarietiesManagerProps) {
+  const [varieties, setVarieties] = useState<Variety[]>(initialVarieties);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const load = useCallback(async () => {
+  async function reload() {
     const response = await fetch('/api/admin/varieties', { cache: 'no-store' });
     const body = (await response.json().catch(() => null)) as { varieties?: Variety[]; error?: string } | null;
     if (!response.ok) throw new Error(body?.error ?? 'Unable to load varieties.');
     setVarieties(body?.varieties ?? []);
-  }, []);
-
-  useEffect(() => {
-    load().catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : 'Unable to load varieties.'));
-  }, [load]);
+  }
 
   const edit = (variety: Variety) => {
     setEditingId(variety.id);
@@ -84,7 +84,7 @@ export function VarietiesManager() {
       });
       const body = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) throw new Error(body?.error ?? 'Unable to save variety.');
-      await load();
+      await reload();
       reset();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to save variety.');
@@ -103,7 +103,7 @@ export function VarietiesManager() {
       return;
     }
     if (editingId === variety.id) reset();
-    await load().catch(() => setError('Variety deleted, but the list could not be refreshed.'));
+    await reload().catch(() => setError('Variety deleted, but the list could not be refreshed.'));
   }
 
   return (
