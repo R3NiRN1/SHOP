@@ -29,4 +29,10 @@ export default defineConfig(
       },
     },
   },
+  {
+    files: ['next.config.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 );
