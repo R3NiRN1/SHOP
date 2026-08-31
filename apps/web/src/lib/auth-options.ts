@@ -3,11 +3,14 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { getAdminCredentials } from './env';
 import { getPrisma } from './prisma';
 import { getAuthSecret, hasRuntimeAuthConfig } from './runtime-env';
-import { safeEqual } from './security';
+import { getAdminCredentialFingerprint, safeEqual } from './security';
+
+const ADMIN_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 
 export const authOptions: AuthOptions = {
   secret: getAuthSecret() ?? undefined,
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: ADMIN_SESSION_MAX_AGE_SECONDS },
+  jwt: { maxAge: ADMIN_SESSION_MAX_AGE_SECONDS },
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -36,7 +39,23 @@ export const authOptions: AuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user?.role) token.role = user.role;
+      const currentFingerprint = getAdminCredentialFingerprint();
+
+      if (user?.role) {
+        token.role = user.role;
+        token.adminCredentialFingerprint = currentFingerprint ?? undefined;
+      }
+
+      if (
+        token.role === 'ADMIN' &&
+        (!currentFingerprint ||
+          !token.adminCredentialFingerprint ||
+          !safeEqual(token.adminCredentialFingerprint, currentFingerprint))
+      ) {
+        delete token.role;
+        delete token.adminCredentialFingerprint;
+      }
+
       return token;
     },
     async session({ session, token }) {
