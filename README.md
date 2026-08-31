@@ -14,7 +14,7 @@ A small Next.js seed catalogue/storefront with a protected catalogue-admin surfa
 ## Toolchain
 
 - Node.js 24.20.0 LTS
-- pnpm 10.0.0
+- pnpm 11.25.0
 - Next.js 16.3.3
 - NextAuth.js 4.24.15
 - React 19.2.8
@@ -23,7 +23,7 @@ A small Next.js seed catalogue/storefront with a protected catalogue-admin surfa
 
 ## Local setup
 
-Use the Node version in `.nvmrc` so development, CI and production stay on the same supported LTS line.
+Use the Node version in `.nvmrc` and the package-manager version pinned in `package.json` so development, CI and production stay on the same supported toolchain.
 
 ```bash
 corepack enable
@@ -39,7 +39,7 @@ For a browsable local demo without PostgreSQL, set `ENABLE_STARTER_CATALOG=true`
 
 ## Environment configuration
 
-Create `apps/web/.env.local` for local development. Production values belong in the deployment platform's configuration store.
+Create `apps/web/.env.local` for local development. Production values belong in the deployment platform's secret/configuration store.
 
 Required for production admin/catalogue operation:
 
