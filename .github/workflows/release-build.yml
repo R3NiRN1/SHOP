@@ -23,6 +23,7 @@ jobs:
     name: Build standalone release artifact
     runs-on: ubuntu-latest
     env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?schema=public
       AUTH_SECRET: ci-placeholder-not-for-prod
       NEXTAUTH_SECRET: ci-placeholder-not-for-prod
@@ -30,8 +31,10 @@ jobs:
       ADMIN_PASSWORD: admin
       SHOP_CONTACT_EMAIL: ci@shop.test
     steps:
-      - name: Checkout
+      - name: Checkout exact release source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
@@ -48,6 +51,16 @@ jobs:
 
       - name: Enable Corepack
         run: corepack enable
+
+      - name: Verify checkout provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          checked_out="$(git rev-parse HEAD)"
+          if [ "$checked_out" != "$SOURCE_SHA" ]; then
+            echo "Expected source $SOURCE_SHA but checked out $checked_out"
+            exit 1
+          fi
 
       - name: Preflight
         run: pnpm run preflight
@@ -78,7 +91,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf release-bundle
+          rm -rf release-bundle release-smoke
           mkdir -p release-bundle
           cp -a apps/web/.next/standalone/. release-bundle/
 
@@ -100,7 +113,7 @@ jobs:
           cp apps/web/prisma/schema.prisma release-bundle/ops/schema.prisma
 
           cat > release-bundle/RELEASE-MANIFEST.txt <<EOF
-          source_sha=${GITHUB_SHA}
+          source_sha=${SOURCE_SHA}
           node=24.20.0
           pnpm=11.25.0
           next=16.3.3
@@ -111,20 +124,25 @@ jobs:
           EOF
 
           server_rel="${server_path#release-bundle/}"
-          archive="shop-web-${GITHUB_SHA:0:12}-linux-x64.tar.gz"
+          archive="shop-web-${SOURCE_SHA:0:12}-linux-x64.tar.gz"
           tar -czf "$archive" -C release-bundle .
           sha256sum "$archive" > "$archive.sha256"
+          sha256sum --check "$archive.sha256"
+
+          mkdir -p release-smoke
+          tar -xzf "$archive" -C release-smoke
 
           echo "server_rel=$server_rel" >> "$GITHUB_OUTPUT"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Smoke-test packaged runtime
+      - name: Smoke-test extracted release archive
         shell: bash
         env:
           SERVER_REL: ${{ steps.bundle.outputs.server_rel }}
         run: |
           set -euo pipefail
-          server_path="release-bundle/$SERVER_REL"
+          server_path="release-smoke/$SERVER_REL"
           server_dir="$(dirname "$server_path")"
           server_name="$(basename "$server_path")"
 
@@ -162,7 +180,7 @@ jobs:
       - name: Upload release candidate artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: shop-web-${{ github.sha }}-linux-x64
+          name: shop-web-${{ steps.bundle.outputs.source_sha }}-linux-x64
           path: |
             ${{ steps.bundle.outputs.archive }}
             ${{ steps.bundle.outputs.archive }}.sha256
