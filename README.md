@@ -13,7 +13,7 @@ A small Next.js seed catalogue/storefront with a protected catalogue-admin surfa
 
 ## Toolchain
 
-- Node.js 20.19.0
+- Node.js 24.20.0 LTS
 - pnpm 10.0.0
 - Next.js 16.3.3
 - NextAuth.js 4.24.15
@@ -22,6 +22,8 @@ A small Next.js seed catalogue/storefront with a protected catalogue-admin surfa
 - Vitest 4.1.11
 
 ## Local setup
+
+Use the Node version in `.nvmrc` so development, CI and production stay on the same supported LTS line.
 
 ```bash
 corepack enable
@@ -69,6 +71,10 @@ pnpm -C apps/web exec prisma migrate deploy
 ```
 
 If an existing database was created with `prisma db push`, do not run the initial migration blindly. Compare the live schema with `schema.prisma`, back up the database, and baseline it deliberately before using `prisma migrate deploy`.
+
+## Dependency security
+
+CI fails on high-severity package advisories. Narrow pnpm overrides are currently used for patched transitive releases of `picomatch`, `lodash`, and `deepmerge-ts` where upstream dependency chains have not yet resolved to the fixed versions. Remove each override when the direct upstream package incorporates the fixed dependency and the audit remains clean.
 
 ## Verification
 
