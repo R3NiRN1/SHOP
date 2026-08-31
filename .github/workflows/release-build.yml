@@ -12,6 +12,7 @@ on:
       - 'pnpm-workspace.yaml'
       - 'docs/RELEASE.md'
   push:
+    branches: [main]
     tags:
       - 'v*'
 
