@@ -1,19 +1,18 @@
 import NextAuth from 'next-auth';
 import { authOptions } from '../../../../lib/auth-options';
 import { checkRateLimit, getClientKey } from '../../../../lib/rate-limit';
-import { authRuntimeState, hasRuntimeAuthConfig } from '../../../../lib/runtime-env';
+import { hasRuntimeAuthConfig } from '../../../../lib/runtime-env';
 
 export const dynamic = 'force-dynamic';
 
 const nextAuthHandler = NextAuth(authOptions);
+const noStoreHeaders = { 'Cache-Control': 'no-store' };
 
-const authUnavailableResponse = () => {
-  const { issues } = authRuntimeState();
-  return Response.json(
-    { error: 'Auth is not configured for runtime use.', missing: issues },
-    { status: 503 },
+const authUnavailableResponse = () =>
+  Response.json(
+    { error: 'Authentication service is unavailable.' },
+    { status: 503, headers: noStoreHeaders },
   );
-};
 
 export async function GET(request: Request) {
   if (!hasRuntimeAuthConfig()) return authUnavailableResponse();
@@ -33,7 +32,7 @@ export async function POST(request: Request) {
   if (!result.allowed) {
     return Response.json(
       { error: 'Too many authentication requests. Try again later.' },
-      { status: 429, headers: { 'Retry-After': String(result.retryAfterSeconds) } },
+      { status: 429, headers: { ...noStoreHeaders, 'Retry-After': String(result.retryAfterSeconds) } },
     );
   }
 
