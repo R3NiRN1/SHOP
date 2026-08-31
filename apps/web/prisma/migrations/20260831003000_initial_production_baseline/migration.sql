@@ -33,6 +33,8 @@ CREATE TABLE "Variety" (
     "published" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "Variety_price_range_check" CHECK ("price" IS NULL OR ("price" >= 0 AND "price" <= 10000.00)),
+    CONSTRAINT "Variety_stock_range_check" CHECK ("stock" IS NULL OR ("stock" >= 0 AND "stock" <= 1000000)),
     CONSTRAINT "Variety_pkey" PRIMARY KEY ("id")
 );
 
