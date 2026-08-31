@@ -10,6 +10,7 @@ const securityHeaders = [
 ];
 
 module.exports = {
+  output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../..'),
   poweredByHeader: false,
   async headers() {

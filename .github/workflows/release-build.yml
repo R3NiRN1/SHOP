@@ -1,0 +1,205 @@
+name: Release Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/release-build.yml'
+      - 'apps/web/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'docs/RELEASE.md'
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build standalone release artifact
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?schema=public
+      AUTH_SECRET: ci-placeholder-not-for-prod
+      NEXTAUTH_SECRET: ci-placeholder-not-for-prod
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: admin
+      SHOP_CONTACT_EMAIL: ci@shop.test
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+        with:
+          version: 11.25.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24.20.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Verify build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          checked_out="$(git rev-parse HEAD)"
+          if [ "$checked_out" != "$SOURCE_SHA" ]; then
+            echo "Expected source $SOURCE_SHA but checked out $checked_out"
+            exit 1
+          fi
+          if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
+            echo "Release artifact requires Linux x86_64; runner is $(uname -s) $(uname -m)"
+            exit 1
+          fi
+          if [ "$(node --version)" != "v24.20.0" ]; then
+            echo "Unexpected Node.js version: $(node --version)"
+            exit 1
+          fi
+          if [ "$(pnpm --version)" != "11.25.0" ]; then
+            echo "Unexpected pnpm version: $(pnpm --version)"
+            exit 1
+          fi
+
+      - name: Preflight
+        run: pnpm run preflight
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency audit
+        run: pnpm audit --audit-level high --ignore-registry-errors
+
+      - name: Prisma generate
+        run: pnpm -C apps/web exec prisma generate
+
+      - name: Lint
+        run: pnpm -C apps/web lint
+
+      - name: Typecheck
+        run: pnpm -C apps/web typecheck
+
+      - name: Unit tests
+        run: pnpm -C apps/web test
+
+      - name: Build standalone application
+        run: pnpm -C apps/web build
+
+      - name: Assemble release bundle
+        id: bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-bundle release-smoke
+          mkdir -p release-bundle
+          cp -a apps/web/.next/standalone/. release-bundle/
+
+          server_path="$(find release-bundle -type f -name server.js -print -quit)"
+          if [ -z "$server_path" ]; then
+            echo "Standalone server.js was not produced."
+            exit 1
+          fi
+
+          server_dir="$(dirname "$server_path")"
+          mkdir -p "$server_dir/.next"
+          cp -a apps/web/.next/static "$server_dir/.next/static"
+          if [ -d apps/web/public ]; then
+            cp -a apps/web/public "$server_dir/public"
+          fi
+
+          mkdir -p release-bundle/ops
+          cp -a apps/web/prisma/migrations release-bundle/ops/prisma-migrations
+          cp apps/web/prisma/schema.prisma release-bundle/ops/schema.prisma
+
+          lockfile_sha256="$(sha256sum pnpm-lock.yaml | awk '{print $1}')"
+          schema_sha256="$(sha256sum apps/web/prisma/schema.prisma | awk '{print $1}')"
+          cat > release-bundle/RELEASE-MANIFEST.txt <<EOF
+          source_sha=${SOURCE_SHA}
+          lockfile_sha256=${lockfile_sha256}
+          prisma_schema_sha256=${schema_sha256}
+          node=24.20.0
+          pnpm=11.25.0
+          next=16.3.3
+          next_auth=4.24.15
+          react=19.2.8
+          prisma=7.10.0
+          target=linux-x64
+          EOF
+
+          server_rel="${server_path#release-bundle/}"
+          archive="shop-web-${SOURCE_SHA:0:12}-linux-x64.tar.gz"
+          tar -czf "$archive" -C release-bundle .
+          sha256sum "$archive" > "$archive.sha256"
+          sha256sum --check "$archive.sha256"
+
+          mkdir -p release-smoke
+          tar -xzf "$archive" -C release-smoke
+
+          echo "server_rel=$server_rel" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke-test extracted release archive
+        shell: bash
+        env:
+          SERVER_REL: ${{ steps.bundle.outputs.server_rel }}
+        run: |
+          set -euo pipefail
+          server_path="release-smoke/$SERVER_REL"
+          server_dir="$(dirname "$server_path")"
+          server_name="$(basename "$server_path")"
+
+          pushd "$server_dir" >/dev/null
+          PORT=3001 HOSTNAME=127.0.0.1 node "$server_name" >/tmp/shop-release-server.log 2>&1 &
+          server_pid=$!
+          popd >/dev/null
+
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:3001/api/health >/tmp/health.json; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat /tmp/shop-release-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          node -e "const fs=require('fs'); const body=JSON.parse(fs.readFileSync('/tmp/health.json','utf8')); if(body.ok !== true || body.kind !== 'liveness') process.exit(1)"
+          curl --fail --silent --show-error http://127.0.0.1:3001/ >/tmp/home.html
+
+          ready_code="$(curl --silent --show-error --output /tmp/ready.json --write-out '%{http_code}' http://127.0.0.1:3001/api/ready)"
+          if [ "$ready_code" != "503" ]; then
+            echo "Expected readiness 503 without a live production database; got $ready_code"
+            cat /tmp/ready.json
+            exit 1
+          fi
+
+      - name: Upload release candidate artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: shop-web-${{ steps.bundle.outputs.source_sha }}-linux-x64
+          path: |
+            ${{ steps.bundle.outputs.archive }}
+            ${{ steps.bundle.outputs.archive }}.sha256
+          if-no-files-found: error
+          retention-days: 14
