@@ -31,11 +31,19 @@ export const slugify = (value: string) =>
 
 const parsePrice = (value: unknown): ScalarResult<string | null> => {
   if (value === '' || value == null) return { ok: true, value: null };
-  const numberValue = typeof value === 'number' ? value : Number(String(value));
-  if (!Number.isFinite(numberValue) || numberValue < 0 || numberValue > 10000) {
-    return { ok: false, error: 'Price must be between 0 and 10000.' };
+
+  const raw = String(value).trim();
+  const match = /^(\d{1,5})(?:\.(\d{1,2}))?$/.exec(raw);
+  if (!match) return { ok: false, error: 'Price must be a decimal amount between 0.00 and 10000.00 with at most two decimal places.' };
+
+  const whole = BigInt(match[1]);
+  const fraction = (match[2] ?? '').padEnd(2, '0');
+  const totalPence = whole * 100n + BigInt(fraction || '0');
+  if (totalPence > 1_000_000n) {
+    return { ok: false, error: 'Price must be a decimal amount between 0.00 and 10000.00 with at most two decimal places.' };
   }
-  return { ok: true, value: numberValue.toFixed(2) };
+
+  return { ok: true, value: `${whole.toString()}.${fraction || '00'}` };
 };
 
 const parseStock = (value: unknown): ScalarResult<number | null> => {
