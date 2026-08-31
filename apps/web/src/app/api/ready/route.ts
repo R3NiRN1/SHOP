@@ -20,8 +20,20 @@ export async function GET() {
   }
 
   const ready = database === 'ok' && auth.enabled && contact.configured;
-  return Response.json(
-    { ready, kind: 'readiness', dependencies: { database, auth: auth.enabled ? 'configured' : 'unavailable', contact: contact.configured ? 'configured' : 'unavailable' } },
-    { status: ready ? 200 : 503 },
-  );
+  const body = process.env.READINESS_DETAILS === 'true'
+    ? {
+        ready,
+        kind: 'readiness',
+        dependencies: {
+          database,
+          auth: auth.enabled ? 'configured' : 'unavailable',
+          contact: contact.configured ? 'configured' : 'unavailable',
+        },
+      }
+    : { ready, kind: 'readiness' };
+
+  return Response.json(body, {
+    status: ready ? 200 : 503,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
