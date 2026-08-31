@@ -1,76 +1,39 @@
-import NextAuth, { AuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import { getPrisma } from '../../../../lib/prisma';
-import { getAdminCredentials } from '../../../../lib/env';
-import { authRuntimeState, getAuthSecret, hasRuntimeAuthConfig } from '../../../../lib/runtime-env';
+import NextAuth from 'next-auth';
+import { authOptions } from '../../../../lib/auth-options';
+import { checkRateLimit, getClientKey } from '../../../../lib/rate-limit';
+import { hasRuntimeAuthConfig } from '../../../../lib/runtime-env';
 
 export const dynamic = 'force-dynamic';
 
-export const authOptions: AuthOptions = {
-  secret: getAuthSecret() ?? undefined,
-  session: { strategy: 'jwt' },
-  providers: [
-    CredentialsProvider({
-      name: 'Credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        if (!hasRuntimeAuthConfig()) return null;
-
-        const email = credentials?.email?.toLowerCase() ?? '';
-        const password = credentials?.password ?? '';
-        const { email: adminEmail, password: adminPassword } = getAdminCredentials();
-        if (email !== adminEmail || password !== adminPassword) return null;
-        const prisma = getPrisma();
-        const user = await prisma.user.upsert({
-          where: { email },
-          update: {},
-          create: { email, role: 'ADMIN' },
-        });
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
-      },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.role = (user as any).role;
-      return token;
-    },
-    async session({ session, token }) {
-      if (session) {
-        (session as any).role = (token as any).role;
-      }
-      return session;
-    },
-  },
-};
-
 const nextAuthHandler = NextAuth(authOptions);
+const noStoreHeaders = { 'Cache-Control': 'no-store' };
 
-const authUnavailableResponse = () => {
-  const { reason } = authRuntimeState();
-  return Response.json(
-    {
-      error: 'Auth is not configured for runtime use.',
-      reason,
-    },
-    { status: 503 },
+const authUnavailableResponse = () =>
+  Response.json(
+    { error: 'Authentication service is unavailable.' },
+    { status: 503, headers: noStoreHeaders },
   );
-};
 
 export async function GET(request: Request) {
-  if (!hasRuntimeAuthConfig()) {
-    return authUnavailableResponse();
-  }
-
+  if (!hasRuntimeAuthConfig()) return authUnavailableResponse();
   return nextAuthHandler(request);
 }
 
 export async function POST(request: Request) {
-  if (!hasRuntimeAuthConfig()) {
-    return authUnavailableResponse();
+  if (!hasRuntimeAuthConfig()) return authUnavailableResponse();
+
+  const path = new URL(request.url).pathname;
+  const credentialsAttempt = path.includes('/callback/credentials');
+  const result = checkRateLimit(`auth:${getClientKey(request)}:${credentialsAttempt ? 'credentials' : 'general'}`, {
+    limit: credentialsAttempt ? 5 : 60,
+    windowMs: credentialsAttempt ? 15 * 60_000 : 60_000,
+  });
+
+  if (!result.allowed) {
+    return Response.json(
+      { error: 'Too many authentication requests. Try again later.' },
+      { status: 429, headers: { ...noStoreHeaders, 'Retry-After': String(result.retryAfterSeconds) } },
+    );
   }
 
   return nextAuthHandler(request);

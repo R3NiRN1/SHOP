@@ -1,10 +1,10 @@
 {
   "name": "shopb",
   "private": true,
-  "packageManager": "pnpm@10.0.0",
+  "packageManager": "pnpm@11.25.0",
   "engines": {
-    "node": "20.19.0",
-    "pnpm": "10.0.0"
+    "node": "24.20.0",
+    "pnpm": "11.25.0"
   },
   "scripts": {
     "preflight": "node ./scripts/run-preflight.js",
@@ -14,16 +14,8 @@
     "build": "pnpm -C apps/web build",
     "start": "pnpm -C apps/web start",
     "lint": "pnpm -C apps/web lint",
+    "test": "pnpm -C apps/web test",
     "typecheck": "pnpm -C apps/web typecheck",
-    "ci:local": "pnpm install --frozen-lockfile && pnpm -C apps/web exec prisma generate && pnpm -C apps/web lint && pnpm -C apps/web typecheck && pnpm -C apps/web build"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
-      "prisma",
-      "sharp",
-      "unrs-resolver"
-    ]
+    "ci:local": "pnpm install --frozen-lockfile && pnpm audit --audit-level high --ignore-registry-errors && pnpm -C apps/web exec prisma generate && pnpm -C apps/web lint && pnpm -C apps/web typecheck && pnpm -C apps/web test && pnpm -C apps/web build"
   }
 }

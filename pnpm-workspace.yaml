@@ -1,2 +1,14 @@
 packages:
   - 'apps/*'
+
+verifyDepsBeforeRun: warn
+
+overrides:
+  'picomatch@2.3.1': 2.3.2
+  'picomatch@4.0.3': 4.0.4
+  'lodash@4.17.21': 4.18.0
+  'deepmerge-ts@7.1.5': 8.0.1
+
+allowBuilds:
+  '@prisma/engines@7.10.0': true
+  'prisma@7.10.0': true

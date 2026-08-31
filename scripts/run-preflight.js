@@ -2,7 +2,8 @@ const { existsSync, readFileSync, readdirSync } = require('fs');
 const { join } = require('path');
 const { spawnSync } = require('child_process');
 
-const REQUIRED_NODE_VERSION = [20, 19, 0];
+const REQUIRED_NODE_VERSION = [24, 20, 0];
+const REQUIRED_NODE_MAJOR = 24;
 const JSON_FILES_TO_VALIDATE = ['package.json', join('apps', 'web', 'package.json')];
 const WORKSPACE_METADATA_FILES = ['pnpm-workspace.yaml', ...JSON_FILES_TO_VALIDATE];
 const DISALLOWED_LOCKFILES = new Set(['package-lock.json', 'yarn.lock']);
@@ -27,15 +28,17 @@ const isNodeVersionLessThanRequired = (current, required) => {
 
 const ensureSupportedNodeVersion = () => {
   const currentVersion = parseNodeVersion(process.versions.node);
-  if (!isNodeVersionLessThanRequired(currentVersion, REQUIRED_NODE_VERSION)) {
-    return;
-  }
+  const supported =
+    currentVersion[0] === REQUIRED_NODE_MAJOR &&
+    !isNodeVersionLessThanRequired(currentVersion, REQUIRED_NODE_VERSION);
+
+  if (supported) return;
 
   console.error(
     [
       `Unsupported Node.js version: ${process.versions.node}`,
-      `Required Node.js version: ${REQUIRED_NODE_VERSION.join('.')}`,
-      'CI uses Node 20 latest; upgrade Node (nvm use 20.19+)',
+      `Required Node.js line: ${REQUIRED_NODE_MAJOR}.x, minimum ${REQUIRED_NODE_VERSION.join('.')}`,
+      'CI uses Node 24.20.0 LTS; use the version in .nvmrc for production parity.',
     ].join('\n'),
   );
   process.exit(1);
