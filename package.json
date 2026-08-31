@@ -17,20 +17,5 @@
     "test": "pnpm -C apps/web test",
     "typecheck": "pnpm -C apps/web typecheck",
     "ci:local": "pnpm install --frozen-lockfile && pnpm audit --audit-level high --ignore-registry-errors && pnpm -C apps/web exec prisma generate && pnpm -C apps/web lint && pnpm -C apps/web typecheck && pnpm -C apps/web test && pnpm -C apps/web build"
-  },
-  "pnpm": {
-    "overrides": {
-      "picomatch@2.3.1": "2.3.2",
-      "picomatch@4.0.3": "4.0.4",
-      "lodash@4.17.21": "4.18.0",
-      "deepmerge-ts@7.1.5": "8.0.1"
-    },
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
-      "prisma",
-      "sharp",
-      "unrs-resolver"
-    ]
   }
 }
