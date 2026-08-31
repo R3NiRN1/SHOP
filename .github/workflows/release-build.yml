@@ -53,13 +53,25 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
-      - name: Verify checkout provenance
+      - name: Verify build provenance
         shell: bash
         run: |
           set -euo pipefail
           checked_out="$(git rev-parse HEAD)"
           if [ "$checked_out" != "$SOURCE_SHA" ]; then
             echo "Expected source $SOURCE_SHA but checked out $checked_out"
+            exit 1
+          fi
+          if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
+            echo "Release artifact requires Linux x86_64; runner is $(uname -s) $(uname -m)"
+            exit 1
+          fi
+          if [ "$(node --version)" != "v24.20.0" ]; then
+            echo "Unexpected Node.js version: $(node --version)"
+            exit 1
+          fi
+          if [ "$(pnpm --version)" != "11.25.0" ]; then
+            echo "Unexpected pnpm version: $(pnpm --version)"
             exit 1
           fi
 
@@ -113,8 +125,12 @@ jobs:
           cp -a apps/web/prisma/migrations release-bundle/ops/prisma-migrations
           cp apps/web/prisma/schema.prisma release-bundle/ops/schema.prisma
 
+          lockfile_sha256="$(sha256sum pnpm-lock.yaml | awk '{print $1}')"
+          schema_sha256="$(sha256sum apps/web/prisma/schema.prisma | awk '{print $1}')"
           cat > release-bundle/RELEASE-MANIFEST.txt <<EOF
           source_sha=${SOURCE_SHA}
+          lockfile_sha256=${lockfile_sha256}
+          prisma_schema_sha256=${schema_sha256}
           node=24.20.0
           pnpm=11.25.0
           next=16.3.3
