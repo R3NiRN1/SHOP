@@ -36,14 +36,14 @@ const parsePrice = (value: unknown): ScalarResult<string | null> => {
   const match = /^(\d{1,5})(?:\.(\d{1,2}))?$/.exec(raw);
   if (!match) return { ok: false, error: 'Price must be a decimal amount between 0.00 and 10000.00 with at most two decimal places.' };
 
-  const whole = BigInt(match[1]);
+  const whole = Number(match[1]);
   const fraction = (match[2] ?? '').padEnd(2, '0');
-  const totalPence = whole * 100n + BigInt(fraction || '0');
-  if (totalPence > 1_000_000n) {
+  const totalPence = whole * 100 + Number(fraction || '0');
+  if (totalPence > 1_000_000) {
     return { ok: false, error: 'Price must be a decimal amount between 0.00 and 10000.00 with at most two decimal places.' };
   }
 
-  return { ok: true, value: `${whole.toString()}.${fraction || '00'}` };
+  return { ok: true, value: `${whole}.${fraction || '00'}` };
 };
 
 const parseStock = (value: unknown): ScalarResult<number | null> => {
