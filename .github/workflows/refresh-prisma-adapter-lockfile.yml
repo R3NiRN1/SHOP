@@ -6,6 +6,7 @@ on:
       - fix/prisma7-postgres-adapter
     paths:
       - 'apps/web/package.json'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/refresh-prisma-adapter-lockfile.yml'
 
 permissions:
