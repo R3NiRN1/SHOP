@@ -1,3 +1,4 @@
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { getDatabaseUrl } from './env';
 
@@ -6,12 +7,9 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 export const getPrisma = () => {
-  if (!process.env.DATABASE_URL) {
-    process.env.DATABASE_URL = getDatabaseUrl();
-  }
-
   if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = new PrismaClient();
+    const adapter = new PrismaPg({ connectionString: getDatabaseUrl() });
+    globalForPrisma.prisma = new PrismaClient({ adapter });
   }
 
   return globalForPrisma.prisma;
