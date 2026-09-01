@@ -194,6 +194,12 @@ jobs:
             exit 1
           fi
 
+          if grep -Eiq 'driver adapter is required|PrismaClient was instantiated without any options' /tmp/shop-release-server.log; then
+            echo "Release runtime has a Prisma client configuration error, not a normal unavailable-database condition."
+            cat /tmp/shop-release-server.log
+            exit 1
+          fi
+
       - name: Upload release candidate artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
