@@ -33,10 +33,20 @@ describe('security helpers', () => {
       method: 'POST',
       headers: { origin: 'https://attacker.test', 'sec-fetch-site': 'cross-site' },
     });
+    const browserSameOrigin = new Request('https://shop.test/api/admin/varieties', {
+      method: 'POST',
+      headers: { 'sec-fetch-site': 'same-origin' },
+    });
+    const conflictingOrigin = new Request('https://shop.test/api/admin/varieties', {
+      method: 'POST',
+      headers: { origin: 'https://attacker.test', 'sec-fetch-site': 'same-origin' },
+    });
     const missingOrigin = new Request('https://shop.test/api/admin/varieties', { method: 'POST' });
 
     expect(isSameOriginMutation(sameOrigin)).toBe(true);
     expect(isSameOriginMutation(crossOrigin)).toBe(false);
+    expect(isSameOriginMutation(browserSameOrigin)).toBe(true);
+    expect(isSameOriginMutation(conflictingOrigin)).toBe(false);
     expect(isSameOriginMutation(missingOrigin)).toBe(false);
   });
 });

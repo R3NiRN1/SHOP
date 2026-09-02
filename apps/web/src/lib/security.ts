@@ -24,7 +24,7 @@ export const isSameOriginMutation = (request: Request) => {
   if (fetchSite && fetchSite !== 'same-origin') return false;
 
   const origin = request.headers.get('origin');
-  if (!origin) return process.env.NODE_ENV !== 'production';
+  if (!origin) return fetchSite === 'same-origin' || process.env.NODE_ENV !== 'production';
 
   try {
     return new URL(origin).origin === new URL(request.url).origin;
