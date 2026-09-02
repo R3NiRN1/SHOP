@@ -20,8 +20,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm start',
+    command: 'node .next/standalone/apps/web/server.js',
     url: 'http://127.0.0.1:3001/api/health',
+    env: {
+      PORT: '3001',
+      HOSTNAME: '127.0.0.1',
+    },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     stdout: 'pipe',

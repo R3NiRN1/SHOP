@@ -186,5 +186,17 @@ jobs:
       - name: Build application
         run: pnpm -C apps/web build
 
+      - name: Prepare standalone browser runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          server_dir="apps/web/.next/standalone/apps/web"
+          test -f "$server_dir/server.js"
+          mkdir -p "$server_dir/.next"
+          cp -a apps/web/.next/static "$server_dir/.next/static"
+          if [ -d apps/web/public ]; then
+            cp -a apps/web/public "$server_dir/public"
+          fi
+
       - name: Browser end-to-end tests
         run: pnpm -C apps/web test:e2e
