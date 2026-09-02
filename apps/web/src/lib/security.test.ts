@@ -41,12 +41,18 @@ describe('security helpers', () => {
       method: 'POST',
       headers: { origin: 'https://attacker.test', 'sec-fetch-site': 'same-origin' },
     });
+    vi.stubEnv('NEXTAUTH_URL', 'https://shop.test');
+    const proxiedSameOrigin = new Request('http://internal-host:3001/api/admin/varieties', {
+      method: 'POST',
+      headers: { origin: 'https://shop.test', 'sec-fetch-site': 'same-origin' },
+    });
     const missingOrigin = new Request('https://shop.test/api/admin/varieties', { method: 'POST' });
 
     expect(isSameOriginMutation(sameOrigin)).toBe(true);
     expect(isSameOriginMutation(crossOrigin)).toBe(false);
     expect(isSameOriginMutation(browserSameOrigin)).toBe(true);
     expect(isSameOriginMutation(conflictingOrigin)).toBe(false);
+    expect(isSameOriginMutation(proxiedSameOrigin)).toBe(true);
     expect(isSameOriginMutation(missingOrigin)).toBe(false);
   });
 });
