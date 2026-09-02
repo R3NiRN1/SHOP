@@ -92,6 +92,8 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   await expect(page.getByRole('heading', { name: 'Admin home' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Manage varieties' }).click();
+  await expect(page.getByRole('heading', { name: 'Manage varieties' })).toBeVisible();
+  await page.waitForLoadState('networkidle');
   await page.getByLabel('Name').fill('Browser CRUD Bean');
   await page.getByLabel('Slug').fill('browser-crud-bean');
   await page.getByLabel('Species').fill('Phaseolus vulgaris');
@@ -99,7 +101,12 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   await page.getByLabel('Price (£)').fill('12.34');
   await page.getByLabel('Stock').fill('9');
   await page.getByLabel('Published').check();
+  const createResponsePromise = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === '/api/admin/varieties' && response.request().method() === 'POST',
+  );
   await page.getByRole('button', { name: 'Create variety' }).click();
+  const createResponse = await createResponsePromise;
+  expect(createResponse.status(), await createResponse.text()).toBe(201);
 
   let record = page.locator('article').filter({ hasText: 'Browser CRUD Bean' });
   await expect(record).toContainText('Published');
@@ -111,7 +118,12 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   await page.getByLabel('Name').fill('Browser CRUD Bean Updated');
   await page.getByLabel('Price (£)').fill('0.01');
   await page.getByLabel('Stock').fill('0');
+  const updateResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/api/admin/varieties/') && response.request().method() === 'PATCH',
+  );
   await page.getByRole('button', { name: 'Update variety' }).click();
+  const updateResponse = await updateResponsePromise;
+  expect(updateResponse.status(), await updateResponse.text()).toBe(200);
 
   record = page.locator('article').filter({ hasText: 'Browser CRUD Bean Updated' });
   await expect(record).toContainText('0 packets');
@@ -129,7 +141,12 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   expect(crossOriginWrite.status()).toBe(403);
 
   page.once('dialog', (dialog) => dialog.accept());
+  const deleteResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/api/admin/varieties/') && response.request().method() === 'DELETE',
+  );
   await record.getByRole('button', { name: 'Delete' }).click();
+  const deleteResponse = await deleteResponsePromise;
+  expect(deleteResponse.status(), await deleteResponse.text()).toBe(204);
   await expect(page.getByText('Browser CRUD Bean Updated')).toHaveCount(0);
   await expect(prisma.variety.findUnique({ where: { slug: 'browser-crud-bean' } })).resolves.toBeNull();
 });
