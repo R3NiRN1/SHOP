@@ -12,6 +12,7 @@
     "start": "next start -p 3001",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:integration": "vitest run src/integration/postgres.integration.test.ts",
     "prisma:generate": "pnpm exec prisma generate",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },

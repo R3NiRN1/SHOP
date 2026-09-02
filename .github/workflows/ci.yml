@@ -63,3 +63,62 @@ jobs:
 
       - name: Doctor
         run: pnpm run doctor
+
+  postgres-integration:
+    name: PostgreSQL integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3
+        env:
+          POSTGRES_DB: shop_test
+          POSTGRES_USER: shop_test
+          POSTGRES_PASSWORD: shop_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shop_test -d shop_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      RUN_POSTGRES_INTEGRATION: 'true'
+      DATABASE_URL: postgresql://shop_test:shop_test_password@127.0.0.1:5432/shop_test?schema=public
+      AUTH_SECRET: 0123456789abcdef0123456789abcdef
+      ADMIN_EMAIL: admin@shop.test
+      ADMIN_PASSWORD: integration-admin-password
+      SHOP_CONTACT_EMAIL: orders@shop.test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+        with:
+          version: 11.25.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24.20.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Preflight
+        run: pnpm run preflight
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm -C apps/web exec prisma generate
+
+      - name: Deploy migrations to blank database
+        run: pnpm -C apps/web exec prisma migrate deploy
+
+      - name: PostgreSQL integration tests
+        run: pnpm -C apps/web test:integration

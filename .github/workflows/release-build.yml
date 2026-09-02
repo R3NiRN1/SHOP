@@ -108,9 +108,9 @@ jobs:
           mkdir -p release-bundle
           cp -a apps/web/.next/standalone/. release-bundle/
 
-          server_path="$(find release-bundle -type f -name server.js -print -quit)"
-          if [ -z "$server_path" ]; then
-            echo "Standalone server.js was not produced."
+          server_path="release-bundle/apps/web/server.js"
+          if [ ! -f "$server_path" ]; then
+            echo "Expected standalone application entry point was not produced: $server_path"
             exit 1
           fi
 
