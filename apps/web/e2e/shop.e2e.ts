@@ -81,7 +81,9 @@ test('rejects failed login and unauthenticated admin writes', async ({ page, req
 
   await signIn(page, 'incorrect-password');
   await expect(page).toHaveURL(/error=CredentialsSignin/);
-  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  const session = await page.request.get('/api/auth/session');
+  expect(session.status()).toBe(200);
+  await expect(session.json()).resolves.toEqual({});
 });
 
 test('persists admin create, edit and delete through the browser UI', async ({ page }) => {
