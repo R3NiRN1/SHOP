@@ -166,11 +166,15 @@ integration('PostgreSQL application integration', () => {
 
   it('authenticates the configured administrator and persists the ADMIN database role', async () => {
     const provider = authOptions.providers.find((candidate) => candidate.id === 'credentials') as
-      | { authorize?: (credentials: Record<string, string>, request: Record<string, unknown>) => Promise<unknown> }
+      | {
+          options?: {
+            authorize?: (credentials: Record<string, string>, request: Record<string, unknown>) => Promise<unknown>;
+          };
+        }
       | undefined;
-    expect(provider?.authorize).toBeTypeOf('function');
+    expect(provider?.options?.authorize).toBeTypeOf('function');
 
-    const user = await provider?.authorize?.(
+    const user = await provider?.options?.authorize?.(
       { email: 'ADMIN@SHOP.TEST', password: 'integration-admin-password' },
       { headers: {}, body: {}, query: {}, method: 'POST' },
     );
@@ -178,7 +182,7 @@ integration('PostgreSQL application integration', () => {
     expect(await prisma.user.findUnique({ where: { email: 'admin@shop.test' } })).toMatchObject({ role: 'ADMIN' });
 
     await expect(
-      provider?.authorize?.(
+      provider?.options?.authorize?.(
         { email: 'admin@shop.test', password: 'incorrect-password' },
         { headers: {}, body: {}, query: {}, method: 'POST' },
       ),
