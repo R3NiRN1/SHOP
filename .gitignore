@@ -3,6 +3,7 @@ node_modules/
 .next/
 apps/web/.next/
 apps/web/node-compile-cache/
+*.tsbuildinfo
 
 # Env files
 .env
