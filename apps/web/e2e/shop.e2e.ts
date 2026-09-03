@@ -146,7 +146,7 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   );
   await record.getByRole('button', { name: 'Delete' }).click();
   const deleteResponse = await deleteResponsePromise;
-  expect(deleteResponse.status(), await deleteResponse.text()).toBe(204);
+  expect(deleteResponse.status()).toBe(204);
   await expect(page.getByText('Browser CRUD Bean Updated')).toHaveCount(0);
   await expect(prisma.variety.findUnique({ where: { slug: 'browser-crud-bean' } })).resolves.toBeNull();
 });
