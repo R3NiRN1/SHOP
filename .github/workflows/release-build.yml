@@ -133,7 +133,7 @@ jobs:
           prisma_schema_sha256=${schema_sha256}
           node=24.20.0
           pnpm=11.25.0
-          next=16.3.3
+          next=16.3.4
           next_auth=4.24.15
           react=19.2.8
           prisma=7.10.0
