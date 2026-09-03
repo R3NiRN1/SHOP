@@ -19,7 +19,7 @@ export default async function AdminHomePage() {
   }
 
   const session = await getServerSession(authOptions);
-  if (!session) redirect('/api/auth/signin');
+  if (!session) redirect('/api/auth/signin?callbackUrl=%2Fadmin');
   if (!isAdminSession(session)) return <main className="section-shell page-shell"><h1>Access denied</h1><p>Administrator access is required.</p></main>;
 
   return (

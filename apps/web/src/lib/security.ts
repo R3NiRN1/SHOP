@@ -24,10 +24,12 @@ export const isSameOriginMutation = (request: Request) => {
   if (fetchSite && fetchSite !== 'same-origin') return false;
 
   const origin = request.headers.get('origin');
-  if (!origin) return process.env.NODE_ENV !== 'production';
+  if (!origin) return fetchSite === 'same-origin' || process.env.NODE_ENV !== 'production';
 
   try {
-    return new URL(origin).origin === new URL(request.url).origin;
+    const allowedOrigins = new Set([new URL(request.url).origin]);
+    if (process.env.NEXTAUTH_URL) allowedOrigins.add(new URL(process.env.NEXTAUTH_URL).origin);
+    return allowedOrigins.has(new URL(origin).origin);
   } catch {
     return false;
   }

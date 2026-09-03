@@ -1,12 +1,16 @@
 import NextAuth from 'next-auth';
+import type { NextRequest } from 'next/server';
 import { authOptions } from '../../../../lib/auth-options';
 import { checkRateLimit, getClientKey } from '../../../../lib/rate-limit';
 import { hasRuntimeAuthConfig } from '../../../../lib/runtime-env';
 
 export const dynamic = 'force-dynamic';
 
-const nextAuthHandler = NextAuth(authOptions);
 const noStoreHeaders = { 'Cache-Control': 'no-store' };
+
+type AuthRouteContext = {
+  params: Promise<{ nextauth: string[] }>;
+};
 
 const authUnavailableResponse = () =>
   Response.json(
@@ -14,12 +18,12 @@ const authUnavailableResponse = () =>
     { status: 503, headers: noStoreHeaders },
   );
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest, context: AuthRouteContext) {
   if (!hasRuntimeAuthConfig()) return authUnavailableResponse();
-  return nextAuthHandler(request);
+  return NextAuth(request, context, authOptions);
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest, context: AuthRouteContext) {
   if (!hasRuntimeAuthConfig()) return authUnavailableResponse();
 
   const path = new URL(request.url).pathname;
@@ -36,5 +40,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return nextAuthHandler(request);
+  return NextAuth(request, context, authOptions);
 }
