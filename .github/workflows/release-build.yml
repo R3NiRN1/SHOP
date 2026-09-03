@@ -142,12 +142,12 @@ jobs:
 
           server_rel="${server_path#release-bundle/}"
           archive="shop-web-${SOURCE_SHA:0:12}-linux-x64.tar.gz"
-          tar -czf "$archive" -C release-bundle .
+          tar --create --gzip --file "$archive" --directory release-bundle --owner=0 --group=0 --numeric-owner .
           sha256sum "$archive" > "$archive.sha256"
           sha256sum --check "$archive.sha256"
 
           mkdir -p release-smoke
-          tar -xzf "$archive" -C release-smoke
+          tar --extract --gzip --file "$archive" --directory release-smoke --no-same-owner
 
           echo "server_rel=$server_rel" >> "$GITHUB_OUTPUT"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
