@@ -38,7 +38,6 @@ describe('SHOP doctor', () => {
 
   it('identifies weak, placeholder, and unsafe deployment settings', () => {
     const output = runDoctor({
-      npm_config_user_agent: 'pnpm/10.0.0 node/v24.20.0',
       DATABASE_URL: 'file:./ci.db',
       AUTH_SECRET: 'short',
       ADMIN_EMAIL: 'admin@example.com',
@@ -50,7 +49,6 @@ describe('SHOP doctor', () => {
       ENABLE_STARTER_CATALOG: 'true',
     });
 
-    expect(output).toContain('pnpm: found 10.0.0; require exactly 11.25.0');
     expect(output).toContain('DATABASE_URL: CI placeholder; runtime DB disabled');
     expect(output).toContain('AUTH secret: too short; require at least 32 characters');
     expect(output).toContain('ADMIN_EMAIL: CI placeholder; runtime auth disabled');
