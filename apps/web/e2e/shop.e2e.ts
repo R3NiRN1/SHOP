@@ -60,7 +60,23 @@ test.afterAll(async () => {
 });
 
 test('renders only published catalogue entries and presents no checkout flow', async ({ page }) => {
-  await page.goto('/varieties');
+  const response = await page.goto('/varieties');
+  const contentSecurityPolicy = response?.headers()['content-security-policy'];
+  expect(contentSecurityPolicy).toContain("default-src 'self'");
+  expect(contentSecurityPolicy).toContain("script-src 'self' 'nonce-");
+  expect(contentSecurityPolicy).toContain("'strict-dynamic'");
+  expect(contentSecurityPolicy).not.toContain("script-src 'self' 'unsafe-inline'");
+  expect(contentSecurityPolicy).toContain("object-src 'none'");
+  expect(contentSecurityPolicy).toContain("frame-ancestors 'none'");
+
+  const nonce = contentSecurityPolicy?.match(/'nonce-([^']+)'/)?.[1];
+  expect(nonce).toBeTruthy();
+  const scriptNonces = await page.locator('script').evaluateAll((scripts) =>
+    scripts.map((script) => (script as HTMLScriptElement).nonce),
+  );
+  expect(scriptNonces.length).toBeGreaterThan(0);
+  expect(scriptNonces.every((scriptNonce) => scriptNonce === nonce)).toBe(true);
+
   await expect(page.getByRole('heading', { name: 'Seed varieties' })).toBeVisible();
   await expect(page.getByText('Browser Published Bean')).toBeVisible();
   await expect(page.getByText('Browser Private Bean')).toHaveCount(0);
