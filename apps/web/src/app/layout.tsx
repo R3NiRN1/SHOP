@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Shopb',
+  title: 'SHOP',
   description: 'Seeds with Stories',
 };
 
