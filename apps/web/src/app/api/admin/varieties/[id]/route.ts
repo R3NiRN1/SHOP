@@ -1,85 +1,33 @@
 import { serializeVariety } from '../../../../../lib/catalog';
-import { requireAdminSession } from '../../../../../lib/admin-auth';
-import { getPrisma } from '../../../../../lib/prisma';
-import { checkRateLimit } from '../../../../../lib/rate-limit';
-import { isSameOriginMutation } from '../../../../../lib/security';
+import { adminAccess, api, json, readJson } from '../../../../../lib/commerce-http';
+import { CommerceError, record } from '../../../../../lib/commerce-input';
+import { serial } from '../../../../../lib/inventory';
 import { parseVarietyMutation } from '../../../../../lib/variety-input';
-
 export const dynamic = 'force-dynamic';
-
 type Context = { params: Promise<{ id: string }> };
-
-const noStoreHeaders = { 'Cache-Control': 'no-store' };
-const prismaErrorCode = (error: unknown) =>
-  error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code) : null;
-
-const requireMutationAccess = async (request: Request) => {
-  const auth = await requireAdminSession();
-  if (!auth.ok) return auth;
-  if (!isSameOriginMutation(request)) {
-    return {
-      ok: false as const,
-      response: Response.json(
-        { error: 'Cross-origin writes are not allowed.' },
-        { status: 403, headers: noStoreHeaders },
-      ),
-    };
-  }
-
-  const adminKey = auth.session.user?.email ?? 'admin-session';
-  const rate = checkRateLimit(`admin-write:${adminKey}`, { limit: 60, windowMs: 60_000 });
-  if (!rate.allowed) {
-    return {
-      ok: false as const,
-      response: Response.json(
-        { error: 'Too many write requests.' },
-        { status: 429, headers: { ...noStoreHeaders, 'Retry-After': String(rate.retryAfterSeconds) } },
-      ),
-    };
-  }
-
-  return auth;
-};
-
 export async function PATCH(request: Request, { params }: Context) {
-  const auth = await requireMutationAccess(request);
-  if (!auth.ok) return auth.response;
-
-  const parsed = parseVarietyMutation(await request.json().catch(() => null));
-  if (parsed.ok === false) return Response.json({ error: parsed.error }, { status: 400, headers: noStoreHeaders });
-
-  const { id } = await params;
-  try {
-    const prisma = getPrisma();
-    const variety = await prisma.variety.update({ where: { id }, data: parsed.value });
-    return Response.json(serializeVariety(variety), { headers: noStoreHeaders });
-  } catch (error) {
-    const code = prismaErrorCode(error);
-    if (code === 'P2002') {
-      return Response.json({ error: 'Slug already exists.' }, { status: 409, headers: noStoreHeaders });
-    }
-    if (code === 'P2025') {
-      return Response.json({ error: 'Variety not found.' }, { status: 404, headers: noStoreHeaders });
-    }
-    console.error('Admin catalogue update failed', error);
-    return Response.json({ error: 'Catalogue database is unavailable.' }, { status: 503, headers: noStoreHeaders });
-  }
+  return api(async () => {
+    const auth = await adminAccess(request); if (!auth.ok) return auth.response;
+    const body = record(await readJson(request));
+    const parsed = parseVarietyMutation(body);
+    if (!parsed.ok) throw new CommerceError(parsed.error);
+    const { id } = await params;
+    const variety = await serial(async (tx) => {
+      const current = await tx.variety.findUniqueOrThrow({ where: { id } });
+      if ('stock' in body && parsed.value.stock !== current.stock) throw new CommerceError('Use Adjust stock to record a stock change and its reason.', 409);
+      if (body.expectedUpdatedAt && body.expectedUpdatedAt !== current.updatedAt.toISOString()) throw new CommerceError('This variety changed. Refresh before saving your edit.', 409);
+      const { stock: _stock, ...metadata } = parsed.value;
+      void _stock;
+      return tx.variety.update({ where: { id }, data: { ...metadata, species: metadata.species ?? null, description: metadata.description ?? null, ...(body.archived === false ? { archived: false } : {}), published: current.archived && body.archived !== false ? false : metadata.published } });
+    });
+    return json(serializeVariety(variety));
+  });
 }
-
 export async function DELETE(request: Request, { params }: Context) {
-  const auth = await requireMutationAccess(request);
-  if (!auth.ok) return auth.response;
-
-  const { id } = await params;
-  try {
-    const prisma = getPrisma();
-    await prisma.variety.delete({ where: { id } });
-    return new Response(null, { status: 204, headers: noStoreHeaders });
-  } catch (error) {
-    if (prismaErrorCode(error) === 'P2025') {
-      return Response.json({ error: 'Variety not found.' }, { status: 404, headers: noStoreHeaders });
-    }
-    console.error('Admin catalogue delete failed', error);
-    return Response.json({ error: 'Catalogue database is unavailable.' }, { status: 503, headers: noStoreHeaders });
-  }
+  return api(async () => {
+    const auth = await adminAccess(request); if (!auth.ok) return auth.response;
+    const { id } = await params;
+    await serial((tx) => tx.variety.update({ where: { id }, data: { archived: true, published: false } }));
+    return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+  });
 }

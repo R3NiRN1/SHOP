@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type Stripe from 'stripe';
 
 vi.mock('../lib/admin-auth', () => ({
   requireAdminSession: vi.fn(async () => ({
@@ -12,6 +13,9 @@ import { GET as getAdminVarieties, POST } from '../app/api/admin/varieties/route
 import { GET as getReady } from '../app/api/ready/route';
 import { GET as getPublicVarieties } from '../app/api/varieties/route';
 import { authOptions } from '../lib/auth-options';
+import { adjustStock } from '../lib/inventory';
+import { createOrder, manualOrderAction } from '../lib/orders';
+import { gateway, refundOrder, syncSession } from '../lib/payments';
 import { getPrisma } from '../lib/prisma';
 
 const integration = process.env.RUN_POSTGRES_INTEGRATION === 'true' ? describe : describe.skip;
@@ -50,6 +54,12 @@ integration('PostgreSQL application integration', () => {
   });
 
   beforeEach(async () => {
+    await prisma.paymentEvent.deleteMany();
+    await prisma.refund.deleteMany();
+    await prisma.orderEvent.deleteMany();
+    await prisma.stockMovement.deleteMany();
+    await prisma.orderItem.deleteMany();
+    await prisma.order.deleteMany();
     await prisma.story.deleteMany();
     await prisma.variety.deleteMany();
     await prisma.grower.deleteMany();
@@ -86,7 +96,7 @@ integration('PostgreSQL application integration', () => {
     });
   });
 
-  it('persists admin create, read, update and delete operations', async () => {
+  it('persists admin create, read, update and archive operations', async () => {
     const createResponse = await POST(
       sameOriginRequest('/api/admin/varieties', 'POST', {
         slug: 'decimal-bean',
@@ -113,7 +123,6 @@ integration('PostgreSQL application integration', () => {
         slug: 'decimal-bean-updated',
         name: 'Decimal bean updated',
         price: '0.01',
-        stock: 0,
         published: true,
       }),
       context(created.id),
@@ -122,7 +131,7 @@ integration('PostgreSQL application integration', () => {
     expect(await prisma.variety.findUniqueOrThrow({ where: { id: created.id } })).toMatchObject({
       slug: 'decimal-bean-updated',
       name: 'Decimal bean updated',
-      stock: 0,
+      stock: 7,
       published: true,
     });
 
@@ -131,7 +140,105 @@ integration('PostgreSQL application integration', () => {
       context(created.id),
     );
     expect(deleteResponse.status).toBe(204);
-    expect(await prisma.variety.findUnique({ where: { id: created.id } })).toBeNull();
+    expect(await prisma.variety.findUnique({ where: { id: created.id } })).toMatchObject({ archived: true, published: false });
+  });
+
+  it('records stock counts, rejects stale counts, and confirms a manual sale once', async () => {
+    const variety = await prisma.variety.create({ data: { slug: 'sale-bean', name: 'Sale bean', price: '3.25', stock: 5, published: true } });
+    const count = await adjustStock(variety.id, { requestKey: 'stock-count-first-001', mode: 'count', quantity: 6, version: 0, reason: 'Physical count' }, 'admin');
+    expect(count.stock).toBe(6);
+    await expect(adjustStock(variety.id, { requestKey: 'stock-count-stale-01', mode: 'count', quantity: 3, version: 0, reason: 'Stale count' }, 'admin')).rejects.toMatchObject({ status: 409 });
+    const order = await createOrder({ requestKey: 'manual-order-first-001', email: 'buyer@example.test', items: [{ varietyId: variety.id, quantity: 2 }] }, 'MANUAL', 'admin');
+    expect(order.status).toBe('DRAFT');
+    const [first, second] = await Promise.all([manualOrderAction(order.id, 'confirm', 'admin'), manualOrderAction(order.id, 'confirm', 'admin')]);
+    expect([first.status, second.status]).toEqual(['CONFIRMED', 'CONFIRMED']);
+    expect(await prisma.variety.findUniqueOrThrow({ where: { id: variety.id } })).toMatchObject({ stock: 4, reserved: 0 });
+    expect(await prisma.stockMovement.count({ where: { varietyId: variety.id, kind: 'sell' } })).toBe(1);
+    await manualOrderAction(order.id, 'cancel', 'admin', 'Offline refund recorded');
+    expect(await prisma.variety.findUniqueOrThrow({ where: { id: variety.id } })).toMatchObject({ stock: 6, reserved: 0 });
+  });
+
+  it('reserves stock atomically and prevents concurrent overselling', async () => {
+    const old = { enabled: process.env.PAYMENTS_ENABLED, secret: process.env.STRIPE_SECRET_KEY, webhook: process.env.STRIPE_WEBHOOK_SECRET, url: process.env.NEXTAUTH_URL, delivery: process.env.SHOP_DELIVERY };
+    try {
+      process.env.PAYMENTS_ENABLED = 'true'; process.env.STRIPE_SECRET_KEY = 'sk_test_123456789abcdef';
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_123456789abcdef'; process.env.NEXTAUTH_URL = 'http://localhost:3001'; process.env.SHOP_DELIVERY = 'collection';
+      const variety = await prisma.variety.create({ data: { slug: 'last-bean', name: 'Last bean', price: '2.00', stock: 1, published: true } });
+      const body = (key: string) => ({ requestKey: key, email: 'buyer@example.test', items: [{ varietyId: variety.id, quantity: 1 }] });
+      const results = await Promise.allSettled([createOrder(body('checkout-first-0001'), 'STRIPE', 'owner-a'), createOrder(body('checkout-second-001'), 'STRIPE', 'owner-b')]);
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+      expect(await prisma.variety.findUniqueOrThrow({ where: { id: variety.id } })).toMatchObject({ stock: 1, reserved: 1 });
+    } finally {
+      for (const [key, value] of Object.entries({ PAYMENTS_ENABLED: old.enabled, STRIPE_SECRET_KEY: old.secret, STRIPE_WEBHOOK_SECRET: old.webhook, NEXTAUTH_URL: old.url, SHOP_DELIVERY: old.delivery })) {
+        if (value === undefined) delete process.env[key]; else process.env[key] = value;
+      }
+    }
+  });
+
+  it('processes a paid session once and does not release sold stock on a replayed expiry', async () => {
+    const old = { enabled: process.env.PAYMENTS_ENABLED, secret: process.env.STRIPE_SECRET_KEY, webhook: process.env.STRIPE_WEBHOOK_SECRET, url: process.env.NEXTAUTH_URL, delivery: process.env.SHOP_DELIVERY };
+    try {
+      process.env.PAYMENTS_ENABLED = 'true'; process.env.STRIPE_SECRET_KEY = 'sk_test_123456789abcdef';
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_123456789abcdef'; process.env.NEXTAUTH_URL = 'http://localhost:3001'; process.env.SHOP_DELIVERY = 'collection';
+      const variety = await prisma.variety.create({ data: { slug: 'paid-bean', name: 'Paid bean', price: '3.25', stock: 3, published: true } });
+      const order = await createOrder({ requestKey: 'checkout-payment-0001', email: 'buyer@example.test', items: [{ varietyId: variety.id, quantity: 2 }] }, 'STRIPE', 'owner-a');
+      const paid = { id: 'cs_test_example', client_reference_id: order.id, metadata: { orderId: order.id }, livemode: false, currency: 'gbp', amount_total: 650, status: 'complete', payment_status: 'paid', payment_intent: 'pi_test_example' } as unknown as Stripe.Checkout.Session;
+      await syncSession(paid, { id: 'evt_paid_1', type: 'checkout.session.completed' });
+      await syncSession(paid, { id: 'evt_paid_1', type: 'checkout.session.completed' });
+      await syncSession({ ...paid, status: 'expired', payment_status: 'unpaid' } as Stripe.Checkout.Session, { id: 'evt_expired_1', type: 'checkout.session.expired' });
+      expect(await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).toMatchObject({ status: 'CONFIRMED', inventoryState: 'SOLD' });
+      expect(await prisma.variety.findUniqueOrThrow({ where: { id: variety.id } })).toMatchObject({ stock: 1, reserved: 0 });
+      expect(await prisma.stockMovement.count({ where: { orderId: order.id, kind: 'sell' } })).toBe(1);
+    } finally {
+      for (const [key, value] of Object.entries({ PAYMENTS_ENABLED: old.enabled, STRIPE_SECRET_KEY: old.secret, STRIPE_WEBHOOK_SECRET: old.webhook, NEXTAUTH_URL: old.url, SHOP_DELIVERY: old.delivery })) {
+        if (value === undefined) delete process.env[key]; else process.env[key] = value;
+      }
+    }
+  });
+
+  it('protects reserved packets from a physical count and releases an expired checkout once', async () => {
+    const old = { enabled: process.env.PAYMENTS_ENABLED, secret: process.env.STRIPE_SECRET_KEY, webhook: process.env.STRIPE_WEBHOOK_SECRET, url: process.env.NEXTAUTH_URL, delivery: process.env.SHOP_DELIVERY };
+    try {
+      process.env.PAYMENTS_ENABLED = 'true'; process.env.STRIPE_SECRET_KEY = 'sk_test_123456789abcdef';
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_123456789abcdef'; process.env.NEXTAUTH_URL = 'http://localhost:3001'; process.env.SHOP_DELIVERY = 'collection';
+      const variety = await prisma.variety.create({ data: { slug: 'held-bean', name: 'Held bean', price: '4.00', stock: 2, published: true } });
+      const order = await createOrder({ requestKey: 'checkout-expiry-00001', email: 'buyer@example.test', items: [{ varietyId: variety.id, quantity: 2 }] }, 'STRIPE', 'owner-a');
+      await expect(adjustStock(variety.id, { requestKey: 'count-below-hold-001', mode: 'count', quantity: 1, version: 1, reason: 'Counted one' }, 'admin')).rejects.toMatchObject({ status: 409 });
+      expect(await prisma.variety.findUniqueOrThrow({ where: { id: variety.id } })).toMatchObject({ stock: 2, reserved: 2 });
+      const expired = { id: 'cs_test_expired', client_reference_id: order.id, metadata: { orderId: order.id }, livemode: false, currency: 'gbp', amount_total: 800, status: 'expired', payment_status: 'unpaid' } as unknown as Stripe.Checkout.Session;
+      await syncSession(expired, { id: 'evt_expired_2', type: 'checkout.session.expired' });
+      await syncSession(expired, { id: 'evt_expired_2', type: 'checkout.session.expired' });
+      expect(await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).toMatchObject({ status: 'CANCELLED', inventoryState: 'RELEASED' });
+      expect(await prisma.variety.findUniqueOrThrow({ where: { id: variety.id } })).toMatchObject({ stock: 2, reserved: 0 });
+      expect(await prisma.stockMovement.count({ where: { orderId: order.id, kind: 'release' } })).toBe(1);
+    } finally {
+      for (const [key, value] of Object.entries({ PAYMENTS_ENABLED: old.enabled, STRIPE_SECRET_KEY: old.secret, STRIPE_WEBHOOK_SECRET: old.webhook, NEXTAUTH_URL: old.url, SHOP_DELIVERY: old.delivery })) {
+        if (value === undefined) delete process.env[key]; else process.env[key] = value;
+      }
+    }
+  });
+
+  it('restocks a paid order only after an explicitly requested full refund succeeds', async () => {
+    const old = { enabled: process.env.PAYMENTS_ENABLED, secret: process.env.STRIPE_SECRET_KEY, webhook: process.env.STRIPE_WEBHOOK_SECRET, url: process.env.NEXTAUTH_URL, delivery: process.env.SHOP_DELIVERY };
+    try {
+      process.env.PAYMENTS_ENABLED = 'true'; process.env.STRIPE_SECRET_KEY = 'sk_test_123456789abcdef';
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_123456789abcdef'; process.env.NEXTAUTH_URL = 'http://localhost:3001'; process.env.SHOP_DELIVERY = 'collection';
+      const variety = await prisma.variety.create({ data: { slug: 'refunded-bean', name: 'Refunded bean', price: '3.25', stock: 2, published: true } });
+      const order = await createOrder({ requestKey: 'checkout-refund-0001', email: 'buyer@example.test', items: [{ varietyId: variety.id, quantity: 1 }] }, 'STRIPE', 'owner-a');
+      await syncSession({ id: 'cs_test_refund', client_reference_id: order.id, metadata: { orderId: order.id }, livemode: false, currency: 'gbp', amount_total: 325, status: 'complete', payment_status: 'paid', payment_intent: 'pi_test_refund' } as unknown as Stripe.Checkout.Session);
+      vi.spyOn(gateway, 'createRefund').mockImplementation(async (params) => ({ id: 're_test_refund', amount: 325, payment_intent: 'pi_test_refund', charge: 'ch_test_refund', metadata: params.metadata, status: 'succeeded' } as Awaited<ReturnType<typeof gateway.createRefund>>));
+      vi.spyOn(gateway, 'retrieveCharge').mockResolvedValue({ id: 'ch_test_refund', amount: 325, amount_refunded: 325, currency: 'gbp', livemode: false, payment_intent: 'pi_test_refund' } as Awaited<ReturnType<typeof gateway.retrieveCharge>>);
+      await refundOrder(order.id, { requestKey: 'refund-request-000001', reason: 'Customer returned unopened packets', restock: true }, 'admin');
+      expect(await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).toMatchObject({ status: 'REFUNDED', inventoryState: 'RESTOCKED', refundedPence: 325 });
+      expect(await prisma.variety.findUniqueOrThrow({ where: { id: variety.id } })).toMatchObject({ stock: 2, reserved: 0 });
+      expect(await prisma.stockMovement.count({ where: { orderId: order.id, kind: 'restock' } })).toBe(1);
+    } finally {
+      vi.restoreAllMocks();
+      for (const [key, value] of Object.entries({ PAYMENTS_ENABLED: old.enabled, STRIPE_SECRET_KEY: old.secret, STRIPE_WEBHOOK_SECRET: old.webhook, NEXTAUTH_URL: old.url, SHOP_DELIVERY: old.delivery })) {
+        if (value === undefined) delete process.env[key]; else process.env[key] = value;
+      }
+    }
   });
 
   it('maps duplicate slugs and missing records to conflict and not-found responses', async () => {

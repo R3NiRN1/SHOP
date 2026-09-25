@@ -25,7 +25,7 @@ export default async function AdminHomePage() {
   return (
     <main className="section-shell page-shell">
       <p className="eyebrow">Admin</p><h1>Admin home</h1><p>Signed in as {session.user?.email}</p>
-      <div className="button-row"><Link className="button primary" href="/admin/varieties">Manage varieties</Link><Link className="button" href="/varieties">View catalogue</Link></div>
+      <div className="button-row"><Link className="button primary" href="/admin/varieties">Manage varieties</Link><Link className="button primary" href="/admin/orders">Orders and sales</Link><Link className="button" href="/varieties">View catalogue</Link></div>
     </main>
   );
 }

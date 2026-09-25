@@ -1,6 +1,6 @@
 # SHOP release procedure
 
-This document defines the minimum release path for the current enquiry-based SHOP application. A successful build is not, by itself, approval to deploy.
+This document defines the minimum release path for SHOP. Hosted payment processing remains opt in, and a successful build is not, by itself, approval to deploy.
 
 ## Release gates
 
@@ -14,8 +14,8 @@ A release candidate is eligible for deployment only when all of the following ar
 6. Any database created previously with `prisma db push` has been deliberately baselined before `prisma migrate deploy` is used.
 7. Migrations have been tested against a restored non-production PostgreSQL database representative of production. The blank-database PostgreSQL CI gate is necessary but does not prove an unknown existing schema is safe to baseline.
 8. The deployment edge/reverse proxy provides TLS, request-size/timeout controls and distributed rate limiting. The application's in-process limiter is only a secondary control.
-9. `/api/health` returns HTTP 200 after deployment and `/api/ready` returns HTTP 200 only after database, auth and contact configuration are genuinely ready.
-10. Admin authentication and create/edit/delete/publish operations have been smoke-tested against the deployed environment before public promotion.
+9. `/api/health` returns HTTP 200 after deployment and `/api/ready` returns HTTP 200 only after database, auth, contact and enabled payment configuration are ready.
+10. Admin authentication, catalogue create/edit/archive/publish, stock adjustment and manual order confirmation have been smoke-tested against the deployed environment before public promotion.
 11. A full-history secret scan over all reachable branches and tags reports no live credentials. Any finding is rotated first and removed from history under a separately reviewed incident plan.
 
 ## Build artifact
@@ -62,6 +62,8 @@ Required runtime values:
 
 Set `TRUST_PROXY_HEADERS=true` only when the deployment proxy is known to overwrite/sanitise forwarding headers. Leave `ENABLE_STARTER_CATALOG` disabled in production. Leave `READINESS_DETAILS` disabled on a public readiness endpoint unless operations explicitly require dependency details.
 
+Leave `PAYMENTS_ENABLED=false` until a Stripe merchant account, test-mode keys, signed webhook endpoint, TLS origin and provider smoke test are ready. Set `SHOP_DELIVERY` to `collection` or `shipping` and set `SHOP_SHIPPING_PENCE` for shipping. Test keys are sufficient for rehearsals. Live keys require `SHOP_ALLOW_LIVE_PAYMENTS=true` and HTTPS. Subscribe the webhook to Checkout completion/expiry and charge/refund events named in the README. Check webhook delivery and order/stock reconciliation in test mode before enabling live card acceptance. Stripe fees, tax treatment, fulfilment policy and refunds remain merchant decisions.
+
 No real secrets belong in the repository, build logs or release artifacts.
 
 ## Database sequencing
@@ -71,6 +73,8 @@ For a new PostgreSQL database, apply the committed migrations before starting th
 ```bash
 pnpm -C apps/web exec prisma migrate deploy
 ```
+
+For an existing v1 database with migration history, back it up, restore it to an isolated test database, apply `20260925220000_orders_inventory_payments`, and confirm existing varieties, opening stock movements and admin edits. Deploy the same forward migration before starting the new application. Do not activate online checkout during migration. Rollback to the old binary requires leaving the additive schema in place; stock/order data created after activation must be reconciled before operating the old version.
 
 For an existing database with no Prisma migration history, the initial migration is not a safe blind retrofit. A database operator must complete this sequence:
 
@@ -105,7 +109,7 @@ GET /             -> 200
 GET /varieties    -> 200
 ```
 
-Then authenticate as the configured administrator and exercise one controlled non-public variety through create, edit, publish/unpublish and delete. Confirm that an unauthenticated mutation is rejected and that unpublished records do not appear publicly.
+Then authenticate as the configured administrator and exercise one controlled non-public variety through create, edit, publish/unpublish, stock adjustment and archive. Confirm that an unauthenticated mutation is rejected and that unpublished records do not appear publicly. Create a manual draft order, confirm it, inspect the one-time stock deduction, and reconcile/refund a Stripe test order with signed webhooks before activating real payments.
 
 Also inspect the HTML response's `Content-Security-Policy` header. Confirm script nonces are present and differ between requests, the canonical HTTPS origin works for authenticated writes, and a conflicting `Origin` is rejected. Do not place nonce-bearing HTML in a shared cache.
 

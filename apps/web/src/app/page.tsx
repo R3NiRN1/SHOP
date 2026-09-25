@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { formatCurrency, formatStock, getCatalogVarieties } from '../lib/catalog';
+import { paymentAvailability } from '../lib/commerce-config';
 import { contactRuntimeState } from '../lib/runtime-env';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const { varieties, source } = await getCatalogVarieties();
+  const { varieties, source } = await getCatalogVarieties({}, 3);
   const contact = contactRuntimeState();
+  const payments = paymentAvailability();
   const featured = varieties.slice(0, 3);
 
   return (
@@ -39,7 +41,7 @@ export default async function Home() {
 
       <section className="section-shell section-block info-grid">
         <article><h2>Catalogue policy</h2><p>Only records explicitly marked published appear in the public catalogue. A production database failure does not fall back to sample stock.</p></article>
-        <article><h2>Ordering</h2><p>{contact.configured ? <>Orders are currently handled by enquiry at <a href={`mailto:${contact.email}`}>{contact.email}</a>.</> : 'Ordering is disabled until a real shop contact address is configured.'}</p></article>
+        <article><h2>Ordering</h2><p>{payments.enabled ? 'Add available varieties to your basket and pay securely at checkout.' : contact.configured ? <>Orders are currently handled by enquiry at <a href={`mailto:${contact.email}`}>{contact.email}</a>.</> : 'Ordering is disabled until a real shop contact address is configured.'}</p></article>
       </section>
     </main>
   );

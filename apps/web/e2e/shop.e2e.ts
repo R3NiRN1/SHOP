@@ -28,6 +28,12 @@ test.beforeAll(async () => {
 });
 
 test.beforeEach(async () => {
+  await prisma.paymentEvent.deleteMany();
+  await prisma.refund.deleteMany();
+  await prisma.orderEvent.deleteMany();
+  await prisma.stockMovement.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
   await prisma.story.deleteMany();
   await prisma.variety.deleteMany();
   await prisma.grower.deleteMany();
@@ -59,7 +65,7 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
-test('renders only published catalogue entries and presents no checkout flow', async ({ page }) => {
+test('renders only published catalogue entries with checkout disabled by default', async ({ page }) => {
   const response = await page.goto('/varieties');
   const contentSecurityPolicy = response?.headers()['content-security-policy'];
   expect(contentSecurityPolicy).toContain("default-src 'self'");
@@ -111,12 +117,13 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   await page.getByRole('link', { name: 'Manage varieties' }).click();
   await expect(page.getByRole('heading', { name: 'Manage varieties' })).toBeVisible();
   await page.waitForLoadState('networkidle');
+  await page.getByRole('button', { name: 'Add variety' }).click();
   await page.getByLabel('Name').fill('Browser CRUD Bean');
-  await page.getByLabel('Slug').fill('browser-crud-bean');
+  await page.getByLabel('Catalogue ID (optional)').fill('browser-crud-bean');
   await page.getByLabel('Species').fill('Phaseolus vulgaris');
   await page.getByLabel('Description').fill('Created through Playwright.');
   await page.getByLabel('Price (£)').fill('12.34');
-  await page.getByLabel('Stock').fill('9');
+  await page.getByLabel('Opening stock').fill('9');
   await page.getByLabel('Published').check();
   const createResponsePromise = page.waitForResponse(
     (response) => new URL(response.url()).pathname === '/api/admin/varieties' && response.request().method() === 'POST',
@@ -134,7 +141,6 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   await record.getByRole('button', { name: 'Edit' }).click();
   await page.getByLabel('Name').fill('Browser CRUD Bean Updated');
   await page.getByLabel('Price (£)').fill('0.01');
-  await page.getByLabel('Stock').fill('0');
   const updateResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/api/admin/varieties/') && response.request().method() === 'PATCH',
   );
@@ -143,10 +149,16 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   expect(updateResponse.status(), await updateResponse.text()).toBe(200);
 
   record = page.locator('article').filter({ hasText: 'Browser CRUD Bean Updated' });
-  await expect(record).toContainText('0 packets');
+  await expect(record).toContainText('9 available');
   const updated = await prisma.variety.findUniqueOrThrow({ where: { slug: 'browser-crud-bean' } });
   expect(updated.price?.toString()).toBe('0.01');
-  expect(updated.stock).toBe(0);
+  expect(updated.stock).toBe(9);
+
+  await record.getByRole('button', { name: 'Adjust stock' }).click();
+  await page.getByLabel('Quantity').fill('-9');
+  await page.getByLabel('Reason').fill('Sold offline');
+  await page.getByRole('button', { name: 'Record stock change' }).click();
+  await expect(record).toContainText('0 available');
 
   const crossOriginWrite = await page.request.post('/api/admin/varieties', {
     headers: {
@@ -161,9 +173,9 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   const deleteResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/api/admin/varieties/') && response.request().method() === 'DELETE',
   );
-  await record.getByRole('button', { name: 'Delete' }).click();
+  await record.getByRole('button', { name: 'Archive' }).click();
   const deleteResponse = await deleteResponsePromise;
   expect(deleteResponse.status()).toBe(204);
   await expect(page.getByText('Browser CRUD Bean Updated')).toHaveCount(0);
-  await expect(prisma.variety.findUnique({ where: { slug: 'browser-crud-bean' } })).resolves.toBeNull();
+  await expect(prisma.variety.findUnique({ where: { slug: 'browser-crud-bean' } })).resolves.toMatchObject({ archived: true, published: false });
 });
