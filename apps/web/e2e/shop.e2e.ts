@@ -109,7 +109,7 @@ test('rejects failed login and unauthenticated admin writes', async ({ page, req
   await expect(session.json()).resolves.toEqual({});
 });
 
-test('persists admin create, edit and delete through the browser UI', async ({ page }) => {
+test('persists admin create, edit, stock adjustment and archive through the browser UI', async ({ page }) => {
   await signIn(page);
   await expect(page).toHaveURL(/\/admin$/);
   await expect(page.getByRole('heading', { name: 'Admin home' })).toBeVisible();
@@ -118,7 +118,7 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   await expect(page.getByRole('heading', { name: 'Manage varieties' })).toBeVisible();
   await page.waitForLoadState('networkidle');
   await page.getByRole('button', { name: 'Add variety' }).click();
-  await page.getByLabel('Name').fill('Browser CRUD Bean');
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Browser CRUD Bean');
   await page.getByLabel('Catalogue ID (optional)').fill('browser-crud-bean');
   await page.getByLabel('Species').fill('Phaseolus vulgaris');
   await page.getByLabel('Description').fill('Created through Playwright.');
@@ -139,7 +139,7 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   ).resolves.toMatchObject({ name: 'Browser CRUD Bean', stock: 9, published: true });
 
   await record.getByRole('button', { name: 'Edit' }).click();
-  await page.getByLabel('Name').fill('Browser CRUD Bean Updated');
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Browser CRUD Bean Updated');
   await page.getByLabel('Price (£)').fill('0.01');
   const updateResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/api/admin/varieties/') && response.request().method() === 'PATCH',
