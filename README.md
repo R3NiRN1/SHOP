@@ -2,6 +2,8 @@
 
 A small Next.js seed catalogue/storefront with a protected catalogue-admin surface. The current ordering path is enquiry-based; checkout and payment processing are not implemented.
 
+The current build is recorded as a **v1 proof of concept**, with its tested scope, limits and [next-build roadmap](docs/V1_POC_AND_NEXT_BUILD.md). Sales and automatic stock changes are tracked in [issue #81](https://github.com/R3NiRN1/SHOP/issues/81).
+
 ## Runtime model
 
 - Public catalogue reads expose only `Variety.published = true` records.
