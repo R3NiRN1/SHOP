@@ -118,13 +118,14 @@ test('persists admin create, edit, stock adjustment and archive through the brow
   await expect(page.getByRole('heading', { name: 'Manage varieties' })).toBeVisible();
   await page.waitForLoadState('networkidle');
   await page.getByRole('button', { name: 'Add variety' }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Browser CRUD Bean');
-  await page.getByLabel('Catalogue ID (optional)').fill('browser-crud-bean');
-  await page.getByLabel('Species').fill('Phaseolus vulgaris');
-  await page.getByLabel('Description').fill('Created through Playwright.');
-  await page.getByLabel('Price (£)').fill('12.34');
-  await page.getByLabel('Opening stock').fill('9');
-  await page.getByLabel('Published').check();
+  const form = page.locator('form.admin-form');
+  await form.getByRole('textbox', { name: 'Name', exact: true }).fill('Browser CRUD Bean');
+  await form.getByLabel('Catalogue ID (optional)').fill('browser-crud-bean');
+  await form.getByLabel('Species').fill('Phaseolus vulgaris');
+  await form.getByLabel('Description').fill('Created through Playwright.');
+  await form.getByLabel('Price (£)').fill('12.34');
+  await form.getByLabel('Opening stock').fill('9');
+  await form.getByRole('checkbox', { name: /^Published/ }).check();
   const createResponsePromise = page.waitForResponse(
     (response) => new URL(response.url()).pathname === '/api/admin/varieties' && response.request().method() === 'POST',
   );
@@ -139,8 +140,8 @@ test('persists admin create, edit, stock adjustment and archive through the brow
   ).resolves.toMatchObject({ name: 'Browser CRUD Bean', stock: 9, published: true });
 
   await record.getByRole('button', { name: 'Edit' }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Browser CRUD Bean Updated');
-  await page.getByLabel('Price (£)').fill('0.01');
+  await form.getByRole('textbox', { name: 'Name', exact: true }).fill('Browser CRUD Bean Updated');
+  await form.getByLabel('Price (£)').fill('0.01');
   const updateResponsePromise = page.waitForResponse(
     (response) => response.url().includes('/api/admin/varieties/') && response.request().method() === 'PATCH',
   );
