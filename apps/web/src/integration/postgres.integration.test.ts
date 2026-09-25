@@ -15,7 +15,7 @@ import { GET as getPublicVarieties } from '../app/api/varieties/route';
 import { authOptions } from '../lib/auth-options';
 import { adjustStock } from '../lib/inventory';
 import { createOrder, manualOrderAction } from '../lib/orders';
-import { gateway, refundOrder, syncSession } from '../lib/payments';
+import { gateway, reconcileRefund, refundOrder, syncSession } from '../lib/payments';
 import { getPrisma } from '../lib/prisma';
 
 const integration = process.env.RUN_POSTGRES_INTEGRATION === 'true' ? describe : describe.skip;
@@ -219,7 +219,7 @@ integration('PostgreSQL application integration', () => {
     }
   });
 
-  it('restocks a paid order only after an explicitly requested full refund succeeds', async () => {
+  it('reconciles a succeeded refund after the charge summary catches up, then restocks once', async () => {
     const old = { enabled: process.env.PAYMENTS_ENABLED, secret: process.env.STRIPE_SECRET_KEY, webhook: process.env.STRIPE_WEBHOOK_SECRET, url: process.env.NEXTAUTH_URL, delivery: process.env.SHOP_DELIVERY };
     try {
       process.env.PAYMENTS_ENABLED = 'true'; process.env.STRIPE_SECRET_KEY = 'sk_test_123456789abcdef';
@@ -227,9 +227,15 @@ integration('PostgreSQL application integration', () => {
       const variety = await prisma.variety.create({ data: { slug: 'refunded-bean', name: 'Refunded bean', price: '3.25', stock: 2, published: true } });
       const order = await createOrder({ requestKey: 'checkout-refund-0001', email: 'buyer@example.test', items: [{ varietyId: variety.id, quantity: 1 }] }, 'STRIPE', 'owner-a');
       await syncSession({ id: 'cs_test_refund', client_reference_id: order.id, metadata: { orderId: order.id }, livemode: false, currency: 'gbp', amount_total: 325, status: 'complete', payment_status: 'paid', payment_intent: 'pi_test_refund' } as unknown as Stripe.Checkout.Session);
-      vi.spyOn(gateway, 'createRefund').mockImplementation(async (params) => ({ id: 're_test_refund', amount: 325, payment_intent: 'pi_test_refund', charge: 'ch_test_refund', metadata: params.metadata, status: 'succeeded' } as Awaited<ReturnType<typeof gateway.createRefund>>));
-      vi.spyOn(gateway, 'retrieveCharge').mockResolvedValue({ id: 'ch_test_refund', amount: 325, amount_refunded: 325, currency: 'gbp', livemode: false, payment_intent: 'pi_test_refund' } as Awaited<ReturnType<typeof gateway.retrieveCharge>>);
+      const remoteRefund = (metadata: unknown) => ({ id: 're_test_refund', amount: 325, payment_intent: 'pi_test_refund', charge: 'ch_test_refund', metadata: metadata ?? {}, status: 'succeeded' } as Awaited<ReturnType<typeof gateway.createRefund>>);
+      vi.spyOn(gateway, 'createRefund').mockImplementation(async (params) => remoteRefund(params.metadata));
+      vi.spyOn(gateway, 'retrieveRefund').mockImplementation(async () => remoteRefund({ refundId: (await prisma.refund.findFirstOrThrow({ where: { orderId: order.id } })).id, orderId: order.id }));
+      const charge = (amount_refunded: number) => ({ id: 'ch_test_refund', amount: 325, amount_refunded, currency: 'gbp', livemode: false, payment_intent: 'pi_test_refund' } as Awaited<ReturnType<typeof gateway.retrieveCharge>>);
+      vi.spyOn(gateway, 'retrieveCharge').mockResolvedValueOnce(charge(0)).mockResolvedValue(charge(325));
       await refundOrder(order.id, { requestKey: 'refund-request-000001', reason: 'Customer returned unopened packets', restock: true }, 'admin');
+      expect(await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).toMatchObject({ status: 'REFUND_PENDING', inventoryState: 'SOLD', refundedPence: 0 });
+      await reconcileRefund(order.id);
+      await expect(reconcileRefund(order.id)).rejects.toMatchObject({ status: 409 });
       expect(await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).toMatchObject({ status: 'REFUNDED', inventoryState: 'RESTOCKED', refundedPence: 325 });
       expect(await prisma.variety.findUniqueOrThrow({ where: { id: variety.id } })).toMatchObject({ stock: 2, reserved: 0 });
       expect(await prisma.stockMovement.count({ where: { orderId: order.id, kind: 'restock' } })).toBe(1);

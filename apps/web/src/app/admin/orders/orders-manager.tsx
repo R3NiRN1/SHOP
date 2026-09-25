@@ -1,12 +1,22 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchJson, messageOf, postJson } from '../../../lib/client-http';
-import { formatPence } from '../../../lib/commerce-input';
+import { formatPence, toPence } from '../../../lib/commerce-input';
 type Summary = { id: string; number: number; status: string; channel: string; email: string; totalPence: number; inventoryState: string; createdAt: string; issue: string | null };
 type Order = Summary & { customerName: string | null; notes: string; delivery: string; shippingAddress: unknown; shippingPence: number; subtotalPence: number; paidAt: string | null; fulfilledAt: string | null; refundedPence: number; stripeIntentId: string | null; items: { id: string; name: string; varietyId: string; unitPricePence: number; quantity: number }[]; events: { id: string; createdAt: string; actor: string; message: string }[]; refunds: { id: string; status: string; amountPence: number; restock: boolean; reason: string }[] };
 type Variety = { id: string; name: string; price: number | null; stock: number | null; reserved?: number; archived?: boolean };
 const statuses = ['DRAFT', 'AWAITING_PAYMENT', 'CONFIRMED', 'FULFILLED', 'CANCELLED', 'REFUND_PENDING', 'REFUNDED', 'REVIEW'];
 const statusText: Record<string, string> = { DRAFT: 'Draft · no stock change', AWAITING_PAYMENT: 'Awaiting payment · stock held', CONFIRMED: 'Paid · ready to prepare', FULFILLED: 'Fulfilled', CANCELLED: 'Cancelled', REFUND_PENDING: 'Refund pending', REFUNDED: 'Refunded', REVIEW: 'Needs payment review' };
+
+function addressText(value: unknown) {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+  const details = value as Record<string, unknown>;
+  if (typeof details.text === 'string') return details.text;
+  const address = details.address && typeof details.address === 'object' && !Array.isArray(details.address) ? details.address as Record<string, unknown> : details;
+  return [details.name, address.line1, address.line2, address.city, address.state, address.postal_code, address.country]
+    .filter((part): part is string => typeof part === 'string' && part.trim().length > 0).join('\n');
+}
 
 export function OrdersManager() {
   const [orders, setOrders] = useState<Summary[]>([]);
@@ -21,7 +31,7 @@ export function OrdersManager() {
   const [notes, setNotes] = useState('');
   const [delivery, setDelivery] = useState('collection');
   const [address, setAddress] = useState('');
-  const [shippingPence, setShippingPence] = useState('0');
+  const [shipping, setShipping] = useState('0.00');
   const [search, setSearch] = useState('');
   const [matches, setMatches] = useState<Variety[]>([]);
   const [lines, setLines] = useState<{ item: Variety; quantity: number }[]>([]);
@@ -49,8 +59,10 @@ export function OrdersManager() {
   async function create(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError(''); key.current ||= crypto.randomUUID();
     try {
-      const order = await postJson<Order>('/api/admin/orders', { email, customerName, notes, delivery, address, shippingPence: Number(shippingPence), items: lines.map(({ item, quantity }) => ({ varietyId: item.id, quantity })), requestKey: key.current });
-      key.current = ''; setCreating(false); setLines([]); setDetail(await fetchJson<Order>(`/api/admin/orders/${order.id}`)); await list(1, q, status);
+      const order = await postJson<Order>('/api/admin/orders', { email, customerName, notes, delivery, address, shippingPence: delivery === 'shipping' ? toPence(shipping) : 0, items: lines.map(({ item, quantity }) => ({ varietyId: item.id, quantity })), requestKey: key.current });
+      key.current = ''; setCreating(false); setLines([]); setEmail(''); setCustomerName(''); setNotes(''); setAddress(''); setShipping('0.00');
+      try { setDetail(await fetchJson<Order>(`/api/admin/orders/${order.id}`)); await list(1, q, status); }
+      catch { setError('Draft saved, but the order list could not be refreshed. Reload this page to see it.'); }
     } catch (error) { setError(messageOf(error)); } finally { setBusy(false); }
   }
   async function act(action: string) {
@@ -60,7 +72,12 @@ export function OrdersManager() {
     try {
       const next = await postJson<Order>(`/api/admin/orders/${detail.id}`, { action, reason, restock, ...(action === 'refund' ? { requestKey: crypto.randomUUID() } : {}) });
       setDetail(next); setReason(''); setRestock(false); await list(page, q, status);
-    } catch (error) { setError(messageOf(error)); } finally { setBusy(false); }
+    } catch (error) {
+      setError(messageOf(error));
+      // A provider request may succeed before our response arrives. Show the
+      // durable state so the operator can reconcile a pending refund safely.
+      try { setDetail(await fetchJson<Order>(`/api/admin/orders/${detail.id}`)); await list(page, q, status); } catch { /* Keep the original error visible. */ }
+    } finally { setBusy(false); }
   }
   return <>
     {error && <p className="error-message" role="alert">{error}</p>}
@@ -69,8 +86,8 @@ export function OrdersManager() {
       <h2>New enquiry order</h2><p className="help-text">Save the enquiry as a draft. Stock changes only after you confirm payment.</p>
       <div className="form-row"><label>Email<input type="email" required maxLength={254} value={email} onChange={(event) => { setEmail(event.target.value); key.current = ''; }} /></label><label>Customer name<input maxLength={160} value={customerName} onChange={(event) => { setCustomerName(event.target.value); key.current = ''; }} /></label></div>
       <label>Notes<textarea rows={2} maxLength={2000} value={notes} onChange={(event) => { setNotes(event.target.value); key.current = ''; }} /></label>
-      <label>Delivery<select value={delivery} onChange={(event) => { setDelivery(event.target.value); if (event.target.value === 'collection') setShippingPence('0'); key.current = ''; }}><option value="collection">Collection</option><option value="shipping">Shipping</option></select></label>
-      {delivery === 'shipping' && <div className="form-row"><label>Address<textarea required maxLength={1000} value={address} onChange={(event) => { setAddress(event.target.value); key.current = ''; }} /></label><label>Postage in pence<input type="number" min={0} max={999999} value={shippingPence} onChange={(event) => { setShippingPence(event.target.value); key.current = ''; }} /></label></div>}
+      <label>Delivery<select value={delivery} onChange={(event) => { setDelivery(event.target.value); if (event.target.value === 'collection') setShipping('0.00'); key.current = ''; }}><option value="collection">Collection</option><option value="shipping">Shipping</option></select></label>
+      {delivery === 'shipping' && <div className="form-row"><label>Address<textarea required maxLength={1000} value={address} onChange={(event) => { setAddress(event.target.value); key.current = ''; }} /></label><label>Postage (£)<input type="number" required min={0} max={9999.99} step="0.01" value={shipping} onChange={(event) => { setShipping(event.target.value); key.current = ''; }} /></label></div>}
       <div className="filter-bar"><label>Find a variety<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name or species" /></label><button className="button" type="button" onClick={() => void findVarieties()}>Search catalogue</button></div>
       {matches.length > 0 && <div className="choice-list">{matches.map((item) => <button type="button" className="button" key={item.id} onClick={() => { if (!lines.some((line) => line.item.id === item.id)) { setLines([...lines, { item, quantity: 1 }]); key.current = ''; } }}>{item.name} · £{item.price?.toFixed(2)} · {item.stock === null ? 'Count needed' : `${item.stock - (item.reserved ?? 0)} available`}</button>)}</div>}
       {lines.map((line) => <div className="form-row" key={line.item.id}><strong>{line.item.name}</strong><label>Packets<input aria-label={`Packets of ${line.item.name}`} type="number" min={1} max={1000} required value={line.quantity} onChange={(event) => { setLines(lines.map((current) => current.item.id === line.item.id ? { ...current, quantity: Number(event.target.value) } : current)); key.current = ''; }} /></label><button type="button" className="button" onClick={() => { setLines(lines.filter((current) => current.item.id !== line.item.id)); key.current = ''; }}>Remove</button></div>)}
@@ -87,7 +104,7 @@ export function OrdersManager() {
       <p><strong>{statusText[detail.status] ?? detail.status}</strong> · {detail.channel === 'MANUAL' ? 'Enquiry / offline payment' : 'Secure online payment'} · Stock {detail.inventoryState.toLowerCase()}</p>
       {detail.issue && <p className="error-message" role="alert">{detail.issue}</p>}
       <p>{detail.customerName} · {detail.email}<br />{detail.delivery === 'collection' ? 'Collection' : 'UK delivery'}</p>
-      {detail.shippingAddress != null && <pre className="address-block">{typeof detail.shippingAddress === 'object' ? JSON.stringify(detail.shippingAddress, null, 2) : String(detail.shippingAddress)}</pre>}
+      {detail.shippingAddress != null && <pre className="address-block">{addressText(detail.shippingAddress)}</pre>}
       {detail.notes && <p>Notes: {detail.notes}</p>}
       <div className="table-scroll"><table><thead><tr><th>Variety</th><th>Quantity</th><th>Unit price</th><th>Total</th></tr></thead><tbody>{detail.items.map((item) => <tr key={item.id}><td>{item.name}</td><td>{item.quantity}</td><td>{formatPence(item.unitPricePence)}</td><td>{formatPence(item.unitPricePence * item.quantity)}</td></tr>)}</tbody></table></div>
       <p>Items {formatPence(detail.subtotalPence)} · Delivery {formatPence(detail.shippingPence)}</p><p className="order-total">Order total: {formatPence(detail.totalPence)}</p>

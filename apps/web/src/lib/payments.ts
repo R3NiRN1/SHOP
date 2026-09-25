@@ -204,8 +204,9 @@ export async function syncRefund(refund: Stripe.Refund, event?: { id: string; ty
 export async function reconcileRefund(id: string) {
   const order = await getPrisma().order.findUniqueOrThrow({ where: { id }, include: { refunds: { orderBy: { createdAt: 'desc' }, take: 1 } } });
   const refund = order.refunds[0];
-  if (order.channel !== 'STRIPE' || !refund || !order.stripeIntentId || refund.status !== 'pending') throw new CommerceError('No pending refund to reconcile.', 409);
+  if (order.channel !== 'STRIPE' || order.status !== 'REFUND_PENDING' || !refund || !order.stripeIntentId || !['pending', 'succeeded'].includes(refund.status)) throw new CommerceError('No pending refund to reconcile.', 409);
   if (refund.stripeId) { await syncRefund(await gateway.retrieveRefund(refund.stripeId)); return; }
+  if (refund.status !== 'pending') throw new CommerceError('Refund identity is incomplete. Review it in Stripe.', 409);
   let startingAfter: string | undefined;
   let exhausted = false;
   for (let page = 0; page < 20; page++) {
