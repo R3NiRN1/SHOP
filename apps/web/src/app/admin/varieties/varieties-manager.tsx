@@ -117,14 +117,14 @@ export function VarietiesManager({ initialVarieties }: VarietiesManagerProps) {
 
       <form className="admin-form" onSubmit={submit}>
         <label>Name<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required maxLength={160} /></label>
-        <label>Slug<input value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value })} placeholder="Generated from name when blank" maxLength={160} /></label>
+        <label>Catalogue ID (optional)<input value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value })} placeholder="Leave blank to generate from name" maxLength={160} /></label>
         <label>Species<input value={form.species} onChange={(event) => setForm({ ...form, species: event.target.value })} maxLength={160} /></label>
         <label>Description<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={4} maxLength={5000} /></label>
         <div className="form-row">
           <label>Price (£)<input type="number" min="0" max="10000" step="0.01" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} /></label>
           <label>Stock<input type="number" min="0" max="1000000" step="1" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></label>
         </div>
-        <label className="checkbox-row"><input type="checkbox" checked={form.published} onChange={(event) => setForm({ ...form, published: event.target.checked })} /> Published</label>
+        <label className="checkbox-row"><input type="checkbox" checked={form.published} onChange={(event) => setForm({ ...form, published: event.target.checked })} /> Published — show in the public catalogue</label>
         <div className="button-row">
           <button className="button primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving…' : editingId ? 'Update variety' : 'Create variety'}</button>
           {editingId && <button className="button" type="button" onClick={reset}>Cancel edit</button>}
@@ -135,7 +135,7 @@ export function VarietiesManager({ initialVarieties }: VarietiesManagerProps) {
       <div className="admin-list">
         {varieties.map((variety) => (
           <article key={variety.id}>
-            <div><strong>{variety.name}</strong><div className="admin-meta">/{variety.slug} · {variety.published ? 'Published' : 'Draft'}</div></div>
+            <div><strong>{variety.name}</strong><div className="admin-meta">ID: {variety.slug} · {variety.published ? 'Published' : 'Draft — only visible here'}</div></div>
             <span>{variety.stock == null ? 'Stock TBC' : `${variety.stock} packets`}</span>
             <div className="admin-actions"><button className="button" type="button" onClick={() => edit(variety)}>Edit</button><button className="button danger" type="button" onClick={() => void remove(variety)}>Delete</button></div>
           </article>
