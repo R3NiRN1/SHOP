@@ -39,12 +39,151 @@ model Variety {
   description String?
   price       Decimal? @db.Decimal(10, 2)
   stock       Int?
+  reserved    Int      @default(0)
+  inventoryVersion Int @default(0)
   published   Boolean  @default(false)
+  archived    Boolean  @default(false)
   stories     Story[]
+  orderItems  OrderItem[]
+  movements   StockMovement[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([published, name])
+  @@index([archived, name])
+}
+
+enum OrderChannel {
+  MANUAL
+  STRIPE
+}
+
+enum OrderStatus {
+  DRAFT
+  AWAITING_PAYMENT
+  CONFIRMED
+  FULFILLED
+  CANCELLED
+  REFUND_PENDING
+  REFUNDED
+  REVIEW
+}
+
+enum InventoryState {
+  NONE
+  HELD
+  SOLD
+  RELEASED
+  RESTOCKED
+}
+
+model Order {
+  id              String         @id @default(cuid())
+  number          Int            @unique @default(autoincrement())
+  channel         OrderChannel
+  status          OrderStatus    @default(DRAFT)
+  inventoryState  InventoryState @default(NONE)
+  requestKey      String         @unique
+  requestHash     String
+  ownerHash       String?
+  email           String
+  customerName    String?
+  notes           String         @default("")
+  delivery        String
+  shippingAddress Json?
+  currency        String         @default("gbp")
+  subtotalPence   Int
+  shippingPence   Int            @default(0)
+  totalPence      Int
+  refundedPence   Int            @default(0)
+  checkoutOrigin  String?
+  stripeSessionId String?        @unique
+  stripeIntentId  String?        @unique
+  checkoutUrl     String?
+  expiresAt       DateTime?
+  issue           String?
+  paidAt          DateTime?
+  fulfilledAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  items           OrderItem[]
+  movements       StockMovement[]
+  events          OrderEvent[]
+  refunds         Refund[]
+
+  @@index([status, createdAt])
+  @@index([channel, status, expiresAt])
+  @@index([ownerHash, createdAt])
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  varietyId      String
+  name           String
+  unitPricePence Int
+  quantity       Int
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  variety        Variety @relation(fields: [varietyId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, varietyId])
+  @@index([varietyId])
+}
+
+model StockMovement {
+  id              String   @id @default(cuid())
+  varietyId       String
+  orderId         String?
+  operationKey    String
+  kind            String
+  stockDelta      Int
+  reservedDelta   Int      @default(0)
+  stockAfter      Int?
+  reservedAfter   Int
+  actor           String
+  reason          String
+  createdAt       DateTime @default(now())
+  variety         Variety @relation(fields: [varietyId], references: [id], onDelete: Restrict)
+  order           Order?  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@unique([varietyId, operationKey])
+  @@index([varietyId, createdAt])
+  @@index([orderId])
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  actor     String
+  message   String
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+}
+
+model Refund {
+  id             String      @id @default(cuid())
+  orderId        String
+  requestKey     String      @unique
+  stripeId       String?     @unique
+  status         String      @default("pending")
+  amountPence    Int
+  restock        Boolean     @default(false)
+  reason         String
+  actor          String
+  previousStatus OrderStatus
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  order          Order       @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+}
+
+model PaymentEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
 }
 
 model Story {
