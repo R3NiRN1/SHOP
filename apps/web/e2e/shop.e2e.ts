@@ -65,6 +65,7 @@ test('renders only published catalogue entries and presents no checkout flow', a
   expect(contentSecurityPolicy).toContain("default-src 'self'");
   expect(contentSecurityPolicy).toContain("script-src 'self' 'nonce-");
   expect(contentSecurityPolicy).toContain("'strict-dynamic'");
+  expect(contentSecurityPolicy).not.toContain("'unsafe-eval'");
   expect(contentSecurityPolicy).not.toContain("script-src 'self' 'unsafe-inline'");
   expect(contentSecurityPolicy).toContain("object-src 'none'");
   expect(contentSecurityPolicy).toContain("frame-ancestors 'none'");
