@@ -1,11 +1,14 @@
 import { getPrisma } from '../../../lib/prisma';
 import { authRuntimeState, contactRuntimeState, hasRuntimeDatabaseUrl } from '../../../lib/runtime-env';
+import { paymentAvailability } from '../../../lib/commerce-config';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const auth = authRuntimeState();
   const contact = contactRuntimeState();
+  const paymentsRequired = process.env.PAYMENTS_ENABLED === 'true';
+  const payments = paymentAvailability().enabled;
   let database: 'ok' | 'unconfigured' | 'unavailable' = hasRuntimeDatabaseUrl() ? 'unavailable' : 'unconfigured';
 
   if (hasRuntimeDatabaseUrl()) {
@@ -19,7 +22,7 @@ export async function GET() {
     }
   }
 
-  const ready = database === 'ok' && auth.enabled && contact.configured;
+  const ready = database === 'ok' && auth.enabled && contact.configured && (!paymentsRequired || payments);
   const body = process.env.READINESS_DETAILS === 'true'
     ? {
         ready,
@@ -28,6 +31,7 @@ export async function GET() {
           database,
           auth: auth.enabled ? 'configured' : 'unavailable',
           contact: contact.configured ? 'configured' : 'unavailable',
+          payments: paymentsRequired ? (payments ? 'configured' : 'unavailable') : 'disabled',
         },
       }
     : { ready, kind: 'readiness' };

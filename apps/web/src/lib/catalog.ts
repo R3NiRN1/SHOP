@@ -1,4 +1,4 @@
-import { getPrisma } from './prisma';
+import { queryVarieties, type CatalogueQuery } from './catalog-query';
 import { hasRuntimeDatabaseUrl, isStarterCatalogEnabled } from './runtime-env';
 
 export type CatalogVariety = {
@@ -10,11 +10,18 @@ export type CatalogVariety = {
   price: number | null;
   stock: number | null;
   published: boolean;
+  reserved?: number;
+  archived?: boolean;
+  inventoryVersion?: number;
+  updatedAt?: Date | string;
 };
 
 export type CatalogResult = {
   varieties: CatalogVariety[];
   source: 'database' | 'starter' | 'unavailable';
+  total?: number;
+  page?: number;
+  pageSize?: number;
 };
 
 type DatabaseVariety = Omit<CatalogVariety, 'price'> & {
@@ -59,7 +66,7 @@ export const starterVarieties: CatalogVariety[] = [
   },
 ];
 
-export async function getCatalogVarieties(): Promise<CatalogResult> {
+export async function getCatalogVarieties(query: CatalogueQuery = {}, pageSize = 24): Promise<CatalogResult> {
   if (!hasRuntimeDatabaseUrl()) {
     return isStarterCatalogEnabled()
       ? { varieties: starterVarieties, source: 'starter' }
@@ -67,12 +74,10 @@ export async function getCatalogVarieties(): Promise<CatalogResult> {
   }
 
   try {
-    const prisma = getPrisma();
-    const varieties = await prisma.variety.findMany({
-      where: { published: true },
-      orderBy: { name: 'asc' },
-    });
-    return { varieties: varieties.map(serializeVariety), source: 'database' };
+    const { rows, ...pagination } = await queryVarieties(query, false, pageSize);
+    return { varieties: rows.map((row) => ({ id: row.id, slug: row.slug, name: row.name,
+      species: row.species, description: row.description, price: row.price === null ? null : Number(row.price.toString()),
+      stock: row.stock === null ? null : row.stock - row.reserved, published: row.published })), source: 'database', ...pagination };
   } catch (error) {
     console.error('Catalogue database read failed', error);
     return { varieties: [], source: 'unavailable' };

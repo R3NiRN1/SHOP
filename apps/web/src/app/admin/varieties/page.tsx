@@ -3,25 +3,25 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '../../../lib/auth-options';
 import { serializeVariety } from '../../../lib/catalog';
-import { getPrisma } from '../../../lib/prisma';
+import { queryVarieties, type CatalogueQuery } from '../../../lib/catalog-query';
 import { authRuntimeState } from '../../../lib/runtime-env';
 import { isAdminSession } from '../../../lib/security';
 import { VarietiesManager } from './varieties-manager';
 
 export const dynamic = 'force-dynamic';
 
-async function loadAdminVarieties() {
+async function loadAdminVarieties(query: CatalogueQuery) {
   try {
-    const prisma = getPrisma();
-    const varieties = await prisma.variety.findMany({ orderBy: { name: 'asc' } });
-    return { ok: true as const, varieties: varieties.map(serializeVariety) };
+    const { rows, ...pagination } = await queryVarieties(query, true);
+    return { ok: true as const, varieties: rows.map(serializeVariety), ...pagination };
   } catch (error) {
     console.error('Admin catalogue load failed', error);
     return { ok: false as const };
   }
 }
 
-export default async function AdminVarietiesPage() {
+export default async function AdminVarietiesPage({ searchParams }: { searchParams: Promise<CatalogueQuery> }) {
+  const query = await searchParams;
   const runtime = authRuntimeState();
   if (!runtime.enabled) {
     return (
@@ -40,7 +40,7 @@ export default async function AdminVarietiesPage() {
     return <main className="section-shell page-shell"><h1>Access denied</h1><p>Administrator access is required.</p></main>;
   }
 
-  const catalogue = await loadAdminVarieties();
+  const catalogue = await loadAdminVarieties(query);
   if (!catalogue.ok) {
     return (
       <main className="section-shell page-shell">
@@ -52,5 +52,5 @@ export default async function AdminVarietiesPage() {
     );
   }
 
-  return <VarietiesManager initialVarieties={catalogue.varieties} />;
+  return <VarietiesManager initialVarieties={catalogue.varieties} query={query} initialTotal={catalogue.total} page={catalogue.page} />;
 }

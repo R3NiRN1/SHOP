@@ -1,8 +1,8 @@
 # SHOP
 
-A small Next.js seed catalogue/storefront with a protected catalogue-admin surface. The current ordering path is enquiry-based; checkout and payment processing are not implemented.
+A Next.js seed catalogue/storefront with protected catalogue, stock and order administration. Manual orders and stock adjustments work with PostgreSQL; hosted Stripe card checkout is optional and disabled by default.
 
-The current build is recorded as a **v1 proof of concept**, with its tested scope, limits and [next-build roadmap](docs/V1_POC_AND_NEXT_BUILD.md). Sales and automatic stock changes are tracked in [issue #81](https://github.com/R3NiRN1/SHOP/issues/81).
+The previous build is recorded as a **v1 proof of concept**, with its tested scope and limits in [the v1 record](docs/V1_POC_AND_NEXT_BUILD.md). This branch implements [issue #81](https://github.com/R3NiRN1/SHOP/issues/81).
 
 ## Runtime model
 
@@ -12,7 +12,8 @@ The current build is recorded as a **v1 proof of concept**, with its tested scop
 - Production database failure fails closed: sample inventory is never substituted.
 - Starter entries are available only when `ENABLE_STARTER_CATALOG=true` outside production, and are explicitly labelled as demo data.
 - Enquiry links render only when `SHOP_CONTACT_EMAIL` is configured with a valid non-placeholder address.
-- `/api/health` is a liveness endpoint. `/api/ready` checks database connectivity plus required auth/contact configuration while returning minimal public detail by default.
+- `/api/health` is a liveness endpoint. `/api/ready` checks database connectivity, required auth/contact configuration and payment configuration when checkout is enabled; public detail is minimal by default.
+- Admin stock counts and signed adjustments leave a ledger. Manual orders deduct stock on confirmation; hosted checkout reserves stock until Stripe confirms payment or expiry. Refunds return stock only when the administrator explicitly requests restocking.
 
 ## Toolchain
 
@@ -59,6 +60,10 @@ Optional:
 - `TRUST_PROXY_HEADERS=true` — only when the deployment reverse proxy is known to overwrite/sanitise `x-forwarded-for` / `x-real-ip`; otherwise these headers are not trusted for throttling identity.
 - `READINESS_DETAILS=true` — expose readiness dependency detail; leave false for a public health endpoint unless operations require it.
 - `ENABLE_STARTER_CATALOG=true` — development/demo only; ignored under `NODE_ENV=production`.
+- `PAYMENTS_ENABLED=true` — opt in to hosted Stripe Checkout. Requires `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXTAUTH_URL` and `SHOP_DELIVERY=collection` or `shipping`. For shipping set `SHOP_SHIPPING_PENCE` to a whole number of pence. Leave disabled for manual sales.
+- `SHOP_ALLOW_LIVE_PAYMENTS=true` — separate explicit activation required with an `sk_live_` key and an HTTPS origin. Never use live credentials for local testing.
+
+For Stripe test mode, use a Stripe test account and `sk_test_` key. Register a webhook for `/api/payments/webhook` with `checkout.session.completed`, `checkout.session.expired`, `charge.refunded`, `refund.created`, `refund.updated` and `refund.failed`; use its matching `whsec_` secret. In local development, forward test webhooks to `http://localhost:3001/api/payments/webhook` with the Stripe CLI. Use Stripe test cards only. The server verifies the raw signed body, restricts checkout to cards, and reconciles uncertain provider responses from Admin → Orders. An order in REVIEW or REFUND_PENDING needs operator review; do not fulfil it until resolved. The browser order page is tied to a browser-only cookie; admin orders retain the durable record. A local database alone does not make Stripe checkout operational.
 
 CI placeholder values, malformed email addresses, weak admin passwords and short auth secrets are explicitly rejected by runtime-auth checks. The current authentication model is one administrator whose email and plaintext password are supplied by the deployment secret store. Password comparison is constant-time, admin JWT authority expires after eight hours, and changing the configured admin credentials invalidates existing admin role claims. This is intentionally not a multi-user identity system.
 
@@ -66,7 +71,7 @@ The in-process limiter is deliberately bounded and is a secondary control only. 
 
 ## Database migrations
 
-The repository contains a reviewed initial PostgreSQL migration under `apps/web/prisma/migrations`. It includes database-level range constraints for catalogue prices and stock as well as the unique slug/index constraints represented by the Prisma model.
+The repository contains the initial PostgreSQL migration and a forward migration for orders, payment records, and stock history under `apps/web/prisma/migrations`. Existing stock counts are carried forward with opening ledger entries. Back up the database and rehearse this migration against a restored copy before applying it to existing data.
 
 For a new database:
 
@@ -94,7 +99,7 @@ pnpm build
 pnpm run doctor
 ```
 
-The pull-request suite additionally deploys the committed migration to PostgreSQL 17.6 and runs persistence/constraint integration tests. Playwright builds and exercises the exact standalone release runtime with Chromium, including authentication, admin CRUD, public filtering, same-origin rejection, readiness, and CSP nonces.
+The pull-request suite additionally deploys committed migrations to PostgreSQL 17.6 and runs persistence/constraint integration tests. Playwright builds and exercises the standalone release runtime with Chromium, including authentication, admin catalogue and stock workflows, public filtering, same-origin rejection, readiness, and CSP nonces. Live provider payment processing requires a separate Stripe test account and signed webhook verification before activation.
 
 Pull requests are expected to keep all CI gates green. Security/configuration changes also require the repository's `ALLOW_CONFIG_CHANGE` PR acknowledgement. GitHub Actions used by the hardened workflows are pinned to full commit SHAs.
 
