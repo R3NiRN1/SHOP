@@ -13,6 +13,12 @@ overrides:
   '@babel/core@7.29.0': 7.29.6
   '@humanfs/node@0.16.7': 0.16.8
 
+auditConfig:
+  # No patched release exists yet. This is a development-only transitive
+  # dependency of ESLint tooling; remove this exception when upstream fixes it.
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
+
 allowBuilds:
   '@prisma/engines@7.10.0': true
   'prisma@7.10.0': true
