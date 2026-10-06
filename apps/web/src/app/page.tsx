@@ -12,7 +12,7 @@ export default async function Home() {
   return (
     <main>
       <section className="hero section-shell">
-        <div className="eyebrow">SHOPb • Seed catalogue</div>
+        <div className="eyebrow">SHOP • Seed catalogue</div>
         <div className="hero-grid">
           <div>
             <h1>Seeds with stories.</h1>
