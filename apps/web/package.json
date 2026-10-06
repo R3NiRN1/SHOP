@@ -37,7 +37,7 @@
     "eslint": "10.9.1",
     "eslint-plugin-react-hooks": "7.1.1",
     "prisma": "7.10.0",
-    "typescript": "^5.2.0",
+    "typescript": "^7.0.2",
     "typescript-eslint": "8.68.0",
     "vitest": "4.1.11"
   }
