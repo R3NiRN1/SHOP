@@ -65,6 +65,7 @@ test('renders only published catalogue entries and presents no checkout flow', a
   expect(contentSecurityPolicy).toContain("default-src 'self'");
   expect(contentSecurityPolicy).toContain("script-src 'self' 'nonce-");
   expect(contentSecurityPolicy).toContain("'strict-dynamic'");
+  expect(contentSecurityPolicy).not.toContain("'unsafe-eval'");
   expect(contentSecurityPolicy).not.toContain("script-src 'self' 'unsafe-inline'");
   expect(contentSecurityPolicy).toContain("object-src 'none'");
   expect(contentSecurityPolicy).toContain("frame-ancestors 'none'");
@@ -111,7 +112,7 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   await expect(page.getByRole('heading', { name: 'Manage varieties' })).toBeVisible();
   await page.waitForLoadState('networkidle');
   await page.getByLabel('Name').fill('Browser CRUD Bean');
-  await page.getByLabel('Slug').fill('browser-crud-bean');
+  await page.getByLabel('Catalogue ID (optional)').fill('browser-crud-bean');
   await page.getByLabel('Species').fill('Phaseolus vulgaris');
   await page.getByLabel('Description').fill('Created through Playwright.');
   await page.getByLabel('Price (£)').fill('12.34');
