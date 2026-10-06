@@ -12,6 +12,14 @@ overrides:
   'mysql2': 3.24.2
   '@babel/core@7.29.0': 7.29.6
   '@humanfs/node@0.16.7': 0.16.8
+  'sharp': 0.35.5
+  'source-map-js': 1.2.2
+
+auditConfig:
+  # No patched release exists yet. This is a development-only transitive
+  # dependency of ESLint tooling; remove this exception when upstream fixes it.
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
 
 allowBuilds:
   '@prisma/engines@7.10.0': true
