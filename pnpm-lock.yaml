@@ -29,13 +29,13 @@ importers:
         version: 7.10.1
       '@prisma/client':
         specifier: 7.10.1
-        version: 7.10.1(prisma@7.10.1(@types/node@24.13.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3))(typescript@5.9.3)
+        version: 7.10.1(prisma@7.10.1(@types/node@26.6.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3))(typescript@5.9.3)
       next:
         specifier: 16.4.3
-        version: 16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       next-auth:
         specifier: 4.24.15
-        version: 4.24.15(next@16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 4.24.15(next@16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -56,8 +56,8 @@ importers:
         specifier: 1.64.1
         version: 1.64.1
       '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
+        specifier: ^26.6.5
+        version: 26.6.5
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
@@ -75,7 +75,7 @@ importers:
         version: 7.1.1(eslint@10.13.0(jiti@2.6.1))
       prisma:
         specifier: 7.10.1
-        version: 7.10.1(@types/node@24.13.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)
+        version: 7.10.1(@types/node@26.6.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)
       typescript:
         specifier: ^5.2.0
         version: 5.9.3
@@ -84,7 +84,7 @@ importers:
         version: 8.72.0(eslint@10.13.0(jiti@2.6.1))(typescript@5.9.3)
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@types/node@24.13.3)(vite@8.2.4(@types/node@24.13.3)(jiti@2.6.1))
+        version: 4.1.12(@types/node@26.6.5)(vite@8.2.4(@types/node@26.6.5)(jiti@2.6.1))
 
 packages:
 
@@ -822,8 +822,8 @@ packages:
   '@types/lodash@4.17.25':
     resolution: {integrity: sha512-+K1NIO8I+F9/wNulfVvu23QYd0Pe9/OCqRrim4NoYIf1VoEDL90Ve4ClzpyqBLc7NpGGWRvYNCKZ1BE/Jpf8dQ==}
 
-  '@types/node@24.13.3':
-    resolution: {integrity: sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q==}
+  '@types/node@26.6.5':
+    resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
 
   '@types/pg@8.23.1':
     resolution: {integrity: sha512-fKVHpikPdg4GKks3JuLEhvwSyvwzF23hnabPy6DD8ljVbC7+6J5dQzdv4arV6jqq57djnMgs1HKBxX4P8aBI3A==}
@@ -1938,8 +1938,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  undici-types@7.18.2:
-    resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
+  undici-types@8.9.0:
+    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
   update-browserslist-db@1.3.2:
     resolution: {integrity: sha512-UQ+MSxlhRm1bzjhU+DcuXfjFO1FzNtqhK5+9Yvlp90ItDLk5vT932A0rFu619nf7RVS+Y/VeaUW1jaRDqZ8VJw==}
@@ -2478,11 +2478,11 @@ snapshots:
 
   '@prisma/client-runtime-utils@7.10.1': {}
 
-  '@prisma/client@7.10.1(prisma@7.10.1(@types/node@24.13.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3))(typescript@5.9.3)':
+  '@prisma/client@7.10.1(prisma@7.10.1(@types/node@26.6.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@prisma/client-runtime-utils': 7.10.1
     optionalDependencies:
-      prisma: 7.10.1(@types/node@24.13.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)
+      prisma: 7.10.1(@types/node@26.6.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3)
       typescript: 5.9.3
 
   '@prisma/config@7.10.1':
@@ -2729,13 +2729,13 @@ snapshots:
 
   '@types/lodash@4.17.25': {}
 
-  '@types/node@24.13.3':
+  '@types/node@26.6.5':
     dependencies:
-      undici-types: 7.18.2
+      undici-types: 8.9.0
 
   '@types/pg@8.23.1':
     dependencies:
-      '@types/node': 24.13.3
+      '@types/node': 26.6.5
       pg-protocol: 1.16.0
       pg-types: 2.2.0
 
@@ -2924,13 +2924,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.1
 
-  '@vitest/mocker@4.1.12(vite@8.2.4(@types/node@24.13.3)(jiti@2.6.1))':
+  '@vitest/mocker@4.1.12(vite@8.2.4(@types/node@26.6.5)(jiti@2.6.1))':
     dependencies:
       '@vitest/spy': 4.1.12
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.2.4(@types/node@24.13.3)(jiti@2.6.1)
+      vite: 8.2.4(@types/node@26.6.5)(jiti@2.6.1)
 
   '@vitest/pretty-format@4.1.12':
     dependencies:
@@ -3461,9 +3461,9 @@ snapshots:
 
   ms@2.1.3: {}
 
-  mysql2@3.24.2(@types/node@24.13.3):
+  mysql2@3.24.2(@types/node@26.6.5):
     dependencies:
-      '@types/node': 24.13.3
+      '@types/node': 26.6.5
       aws-ssl-profiles: 1.1.2
       generate-function: 2.3.1
       iconv-lite: 0.7.3
@@ -3480,13 +3480,13 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next-auth@4.24.15(next@16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next-auth@4.24.15(next@16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@babel/runtime': 7.28.6
       '@panva/hkdf': 1.2.1
       cookie: 0.7.2
       jose: 4.15.9
-      next: 16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      next: 16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       oauth: 0.9.15
       openid-client: 5.7.1
       preact: 10.28.3
@@ -3495,7 +3495,7 @@ snapshots:
       react-dom: 19.3.1(react@19.3.1)
       uuid: 11.1.1
 
-  next@16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next@16.4.3(@babel/core@7.29.6)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@next/env': 16.4.3
       '@swc/helpers': 0.5.23
@@ -3515,7 +3515,7 @@ snapshots:
       '@next/swc-win32-arm64-msvc': 16.4.3
       '@next/swc-win32-x64-msvc': 16.4.3
       '@playwright/test': 1.64.1
-      sharp: 0.35.5(@types/node@24.13.3)
+      sharp: 0.35.5(@types/node@26.6.5)
     transitivePeerDependencies:
       - '@babel/core'
       - '@types/node'
@@ -3659,13 +3659,13 @@ snapshots:
 
   pretty-format@3.8.0: {}
 
-  prisma@7.10.1(@types/node@24.13.3)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3):
+  prisma@7.10.1(@types/node@26.6.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@5.9.3):
     dependencies:
       '@prisma/config': 7.10.1
       '@prisma/dev': 0.24.17(typescript@5.9.3)
       '@prisma/engines': 7.10.1
       '@prisma/studio-core': 0.33.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      mysql2: 3.24.2(@types/node@24.13.3)
+      mysql2: 3.24.2(@types/node@26.6.5)
       postgres: 3.4.7
     optionalDependencies:
       typescript: 5.9.3
@@ -3756,7 +3756,7 @@ snapshots:
 
   semver@7.8.5: {}
 
-  sharp@0.35.5(@types/node@24.13.3):
+  sharp@0.35.5(@types/node@26.6.5):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
@@ -3787,7 +3787,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.35.5
       '@img/sharp-win32-ia32': 0.35.5
       '@img/sharp-win32-x64': 0.35.5
-      '@types/node': 24.13.3
+      '@types/node': 26.6.5
     optional: true
 
   shebang-command@2.0.0:
@@ -3859,7 +3859,7 @@ snapshots:
 
   typescript@5.9.3: {}
 
-  undici-types@7.18.2: {}
+  undici-types@8.9.0: {}
 
   update-browserslist-db@1.3.2(browserslist@4.28.8):
     dependencies:
@@ -3877,7 +3877,7 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  vite@8.2.4(@types/node@24.13.3)(jiti@2.6.1):
+  vite@8.2.4(@types/node@26.6.5)(jiti@2.6.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -3885,14 +3885,14 @@ snapshots:
       rolldown: 1.2.6
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 26.6.5
       fsevents: 2.3.3
       jiti: 2.6.1
 
-  vitest@4.1.12(@types/node@24.13.3)(vite@8.2.4(@types/node@24.13.3)(jiti@2.6.1)):
+  vitest@4.1.12(@types/node@26.6.5)(vite@8.2.4(@types/node@26.6.5)(jiti@2.6.1)):
     dependencies:
       '@vitest/expect': 4.1.12
-      '@vitest/mocker': 4.1.12(vite@8.2.4(@types/node@24.13.3)(jiti@2.6.1))
+      '@vitest/mocker': 4.1.12(vite@8.2.4(@types/node@26.6.5)(jiti@2.6.1))
       '@vitest/pretty-format': 4.1.12
       '@vitest/runner': 4.1.12
       '@vitest/snapshot': 4.1.12
@@ -3909,10 +3909,10 @@ snapshots:
       tinyexec: 1.0.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vite: 8.2.4(@types/node@24.13.3)(jiti@2.6.1)
+      vite: 8.2.4(@types/node@26.6.5)(jiti@2.6.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 24.13.3
+      '@types/node': 26.6.5
     transitivePeerDependencies:
       - msw
 
