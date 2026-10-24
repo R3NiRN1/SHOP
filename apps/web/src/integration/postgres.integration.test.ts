@@ -58,7 +58,7 @@ integration('PostgreSQL application integration', () => {
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
+    await prisma?.$disconnect();
   });
 
   it('connects through the Prisma PostgreSQL adapter and reports ready', async () => {
@@ -174,6 +174,17 @@ integration('PostgreSQL application integration', () => {
       | undefined;
     expect(provider?.options?.authorize).toBeTypeOf('function');
 
+    for (const credentials of [
+      { email: 'admin@shop.test', password: 'incorrect-password' },
+      { email: 'other@shop.test', password: 'integration-admin-password' },
+    ]) {
+      await expect(provider?.options?.authorize?.(
+        credentials,
+        { headers: {}, body: {}, query: {}, method: 'POST' },
+      )).resolves.toBeNull();
+    }
+    expect(await prisma.user.count()).toBe(0);
+
     const user = await provider?.options?.authorize?.(
       { email: 'ADMIN@SHOP.TEST', password: 'integration-admin-password' },
       { headers: {}, body: {}, query: {}, method: 'POST' },
@@ -187,5 +198,26 @@ integration('PostgreSQL application integration', () => {
         { headers: {}, body: {}, query: {}, method: 'POST' },
       ),
     ).resolves.toBeNull();
+  });
+
+  it('keeps reused transaction options unchanged and rolls back failed writes', async () => {
+    const options = { timeout: 30_000, maxWait: 10_000 };
+    await prisma.$transaction(async (tx) => {
+      await tx.$transaction(async (inner) => {
+        await inner.variety.create({ data: { slug: 'nested-commit', name: 'Nested commit' } });
+      }, options);
+    });
+    expect(options).toEqual({ timeout: 30_000, maxWait: 10_000 });
+
+    await expect(prisma.$transaction(async (tx) => {
+      await tx.variety.create({ data: { slug: 'rolled-back', name: 'Rolled back' } });
+      throw new Error('intentional rollback');
+    }, options)).rejects.toThrow('intentional rollback');
+
+    await prisma.$transaction(async (tx) => {
+      await tx.variety.create({ data: { slug: 'independent-commit', name: 'Independent commit' } });
+    }, options);
+    expect(await prisma.variety.findUnique({ where: { slug: 'rolled-back' } })).toBeNull();
+    expect(await prisma.variety.count()).toBe(2);
   });
 });

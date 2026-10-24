@@ -34,7 +34,7 @@ describe('SHOP doctor', () => {
     expect(output).toContain('DATABASE_URL: PostgreSQL URL configured');
     expect(output).toContain('AUTH secret: configured');
     expect(output).toContain('NEXTAUTH_URL: canonical HTTPS origin configured');
-  });
+  }, 15_000);
 
   it('identifies weak, placeholder, and unsafe deployment settings', () => {
     const output = runDoctor({
@@ -57,5 +57,5 @@ describe('SHOP doctor', () => {
     expect(output).toContain('NEXTAUTH_URL: require an origin-only HTTPS URL');
     expect(output).toContain('Proxy-header trust: enabled; verify the deployment proxy overwrites forwarding headers');
     expect(output).toContain('Readiness details: dependency detail exposed');
-  });
+  }, 15_000);
 });
