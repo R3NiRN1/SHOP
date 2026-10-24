@@ -7,6 +7,10 @@ describe('security helpers', () => {
   it('compares credential strings without direct equality', () => {
     expect(safeEqual('correct horse battery staple', 'correct horse battery staple')).toBe(true);
     expect(safeEqual('correct horse battery staple', 'wrong')).toBe(false);
+    expect(safeEqual('same length', 'diff length')).toBe(false);
+    expect(safeEqual('é', 'aa')).toBe(false);
+    expect(safeEqual('é', 'é')).toBe(true);
+    expect(safeEqual('', '')).toBe(true);
   });
 
   it('changes the admin fingerprint when credentials rotate', () => {

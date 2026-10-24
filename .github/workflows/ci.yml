@@ -44,7 +44,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Dependency audit
-        run: pnpm audit --audit-level high --ignore-registry-errors
+        run: pnpm audit --audit-level low
 
       - name: Prisma generate
         run: pnpm -C apps/web exec prisma generate
