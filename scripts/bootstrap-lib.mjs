@@ -32,7 +32,7 @@ export function siteUrl(value, production) {
   try { url = new URL(value.trim()); } catch { throw new Error('Enter a full URL, starting with https:// (or http://localhost for local use).'); }
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
   if (url.username || url.password || url.pathname !== '/' || url.search || url.hash ||
-      (production ? url.protocol !== 'https:' || local : !local || !['http:', 'https:'].includes(url.protocol))) {
+      (production ? url.protocol !== 'https:' || local : !local || url.protocol !== 'http:')) {
     throw new Error(production ? 'Use your public HTTPS address with no path, query or login details.' : 'Use a local origin such as http://localhost:3001, without a path.');
   }
   if (!production && url.port !== '3001') throw new Error('The local app uses port 3001. Enter http://localhost:3001.');

@@ -31,7 +31,7 @@ node scripts/bootstrap.mjs
 
 On Windows, you can also double-click **`Setup-SHOP.cmd`** in the repository folder. It checks for Node, launches the same questionnaire and leaves the window open so you can read the result.
 
-After dependencies are installed, `corepack pnpm bootstrap` opens the same questionnaire. Passwords and database URLs are hidden while you type. Paste them once, then press Enter; the blank display is intentional. Press Ctrl+C at any time to stop. Work already completed is kept.
+After dependencies are installed, `corepack pnpm bootstrap` opens the same questionnaire. Passwords and database URLs are hidden while you type. Paste them once, then press Enter; the blank display is intentional. Press Ctrl+C at any time to stop. Work already completed is kept. If setup was interrupted, reopen `Setup-SHOP.cmd` and choose **Resume**, or run `node scripts/bootstrap.mjs --resume`; you do not need to replace passwords or answer the questionnaire again.
 
 ## 2. Pick your route
 
@@ -41,15 +41,19 @@ After dependencies are installed, `corepack pnpm bootstrap` opens the same quest
 | **2 — Full local app** | Using the catalogue and admin on your computer | A new, empty PostgreSQL database | Real database storage and administrator login |
 | **3 — Production preparation** | Preparing a deployment | A new production PostgreSQL database, public HTTPS URL and real email addresses | Validated configuration and optional initial database migration; hosting/deployment still required |
 
-For your first look, choose **1**, accept the final confirmation, then run:
+For your first look, choose **1** and accept the final confirmation. Setup temporarily starts SHOP, checks the home/catalogue pages, liveness and expected preview readiness, then stops that test server. It reports success only if those checks pass.
+
+To use the app, double-click **`Start-SHOP.cmd`** on Windows, or run:
 
 ```sh
-corepack pnpm dev
+node scripts/bootstrap.mjs --start
 ```
 
 Open **http://localhost:3001**. Keep the terminal open while you use the app. Press Ctrl+C in that terminal to stop it.
 
-Preview mode deliberately has no administrator login. For real catalogue editing, stop the server and rerun the wizard with choice **2**. It offers to back up the preview configuration before replacing it.
+The launcher checks the configured port before starting, binds to loopback, verifies the app, then keeps it running in that terminal. It will not stop another app or silently use a different port.
+
+Preview mode deliberately has no administrator login. For real catalogue editing, stop the server, run `node scripts/bootstrap.mjs --reconfigure`, and choose route **2**. It offers to back up the preview configuration before replacing it.
 
 ## 3. Questionnaire checklist for full setup
 
@@ -87,19 +91,37 @@ Use a URL-safe generated password (letters, numbers, hyphens and underscores) fo
 
 If Docker says the container name already exists, start the existing container with `docker start shop-local-postgres`; do not create another one. If port 5432 is already occupied, ask the database owner whether you should use the existing server or choose another host port. Never delete a database volume to fix a setup error.
 
-The wizard checks connectivity only when you choose to apply the initial migration. It refuses a database containing tables, views or sequences. Existing databases need the reviewed procedure in [RELEASE.md](RELEASE.md); the wizard does not reset, drop, seed or overwrite database records.
+The first migration requires an empty database, including tables, views, sequences and user enum types. Existing databases need the reviewed procedure in [RELEASE.md](RELEASE.md). Once this installation has explicitly authorized its initial migration, recovery may repeat `migrate deploy` only if its saved configuration, migration files, database objects and completed migration history match. This covers an interruption after SQL committed but before setup recorded success. Failed/incomplete SQL migration entries stop for database-owner review. The wizard never resets or drops a database or seeds catalogue records.
 
 ## 5. Confirm that it works
 
 After a successful local database setup:
 
-1. Run `corepack pnpm dev` and open **http://localhost:3001**.
+1. Double-click `Start-SHOP.cmd` or run `node scripts/bootstrap.mjs --start`, then open the local address it displays.
 2. Open **http://localhost:3001/admin** and sign in using the configured email and password. Admin accounts use the configured credentials, not email invitations or self-registration.
 3. Create a test catalogue item, save it unpublished, then publish it when ready.
 4. Open **http://localhost:3001/varieties** and check the published item appears.
 5. Open **http://localhost:3001/api/ready**. A full installation should return `ready: true`. Preview mode intentionally reports not ready because it has no database/admin configuration.
 
 For database mode, an empty catalogue is normal until an administrator adds and publishes items. The installer does not populate live inventory.
+
+Full local setup automatically checks database readiness, obtains a CSRF token, signs in using the configured administrator credentials, verifies the session and reads the protected catalogue. This login can create/update the configured administrator's database record, as normal sign-in does; it does not create or edit catalogue items. A readiness 503 or failed login fails setup instead of reporting ready.
+
+## Recovery and repeatable startup checks
+
+| Action | Command |
+| --- | --- |
+| Finish/repair installation using saved settings | `node scripts/bootstrap.mjs --resume` |
+| Verify an installed local app, then stop its test server | `node scripts/bootstrap.mjs --verify-startup` |
+| Verify and keep the local app running | `node scripts/bootstrap.mjs --start` |
+| Back up settings and run a new questionnaire | `node scripts/bootstrap.mjs --reconfigure` |
+| Explicitly authorize initial migration of a new empty database after configuration-only setup | `node scripts/bootstrap.mjs --resume --migrate-empty` |
+
+Recovery safely repeats preflight, frozen installation and client generation, retaining the original `.env.local` byte-for-byte. Progress is stored atomically in Git-ignored `.shop-setup-state.json`; it contains step names and fingerprints, not passwords or connection URLs. If the process is interrupted, the last active step remains recorded. Changing configuration invalidates prior migration consent. Changing migration files requires the reviewed release procedure instead of silently upgrading a database.
+
+An older guided configuration without a checkpoint can be resumed, but no migration is automatically authorized. Unmanaged environment files are kept unchanged and require deliberate reconfiguration before this installer manages them. Keep config backups private. If a SQL migration failed, do not delete its history or the checkpoint to force retry; ask the database owner to use [RELEASE.md](RELEASE.md).
+
+Startup tests stop only the server process they created. A port conflict fails before launch and leaves the existing process untouched. On a failed check, setup retains configuration and reports the error with secrets redacted. Starting production configuration through the local launcher is refused; production needs the deployment checks below.
 
 ## 6. Production handover
 
@@ -108,7 +130,7 @@ Choice 3 prepares configuration; it does **not** create hosting, install a servi
 - Transfer environment values to the deployment platform's secret/configuration store. Do not email the `.env.local` file or commit it to Git.
 - Keep the configured `NEXTAUTH_URL` equal to the real public HTTPS origin.
 - Run the locked installation and `corepack pnpm build` on the supported deployment environment, then follow the [release procedure](RELEASE.md) for the standalone artifact, migrations and startup.
-- Verify `/api/health`, `/api/ready`, administrator sign-in, published catalogue visibility and the enquiry email destination.
+- Verify `/api/health`, `/api/ready`, administrator sign-in, published catalogue visibility and the enquiry email destination on the deployed HTTPS host. Production preparation does not start a local development server or claim deployed readiness.
 - Record who owns the database, backups, hosting, domain, administrator credentials and public enquiry inbox.
 
 For configuration only, with no package install or database operations:
@@ -117,7 +139,7 @@ For configuration only, with no package install or database operations:
 node scripts/bootstrap.mjs --configure-only
 ```
 
-This mode explicitly leaves dependencies, database and production build unfinished. To finish manually, run `corepack pnpm setup`, then arrange the reviewed database migration before starting the app. Prisma migration commands need `DATABASE_URL` in their process environment; Prisma does not automatically read Next.js's `.env.local`. The wizard passes it securely when it runs the migration.
+This mode explicitly leaves dependencies, database and production build unfinished. Use `--resume` to finish without replacing settings. If it is a new, empty database, add `--migrate-empty` to authorize the initial migration explicitly. Existing databases need the reviewed release procedure. Manual Prisma commands need `DATABASE_URL` in their process environment; Prisma does not automatically read Next.js's `.env.local`. The wizard passes it securely when running migration commands.
 
 ## 7. If something goes wrong
 
@@ -125,13 +147,14 @@ This mode explicitly leaves dependencies, database and production build unfinish
 | --- | --- |
 | `node` is not recognized / wrong Node version | Install the pinned Node version and reopen the terminal. |
 | Corepack is missing or cannot download pnpm | Ask IT to fix the pinned Node/Corepack installation or registry/proxy access; do not switch to npm install. |
-| Existing `.env.local` found | Keep it and exit, or choose to back it up and reconfigure. The backup stays beside it with a `.backup-...` suffix and is also Git-ignored. |
+| Existing `.env.local` found | Choose Resume to keep the settings and repair/finish setup, or deliberately back up and reconfigure. The backup stays beside it with a `.backup-...` suffix and is also Git-ignored. |
 | Password input looks blank | It is hidden intentionally. Type/paste once and press Enter. |
 | Configuration rejected | Follow the displayed explanation and retry that answer. No configuration is written until the final confirmation. |
 | Database connection cannot be verified | Check the server is running, URL, credentials, database name, SSL options and network access with the database owner. No migration was run. |
-| Database already contains tables | Stop and use the existing-database release procedure. Do not drop tables to bypass the check. |
-| Package install failed | Fix the reported network/toolchain issue, then run `corepack pnpm setup`. Saved configuration is retained. Database migration may still be outstanding. |
-| Port 3001 is in use | Stop the other SHOP terminal with Ctrl+C, then retry `corepack pnpm dev`. |
+| Database already contains unknown objects or failed migration history | Stop and use the existing-database release procedure. Do not drop tables or erase migration history to bypass the check. |
+| Package install failed or was interrupted | Fix the reported network/toolchain issue, then rerun Setup and choose Resume, or use `node scripts/bootstrap.mjs --resume`. Settings and secrets are retained. |
+| Port 3001 is in use | Stop the other SHOP terminal yourself with Ctrl+C, then retry Start. Setup never kills an unrelated server. |
+| Startup check timed out or the server exited | Read the redacted server output, fix the cause and retry `--verify-startup`, or `--resume` if installation is incomplete. No successful-startup checkpoint is recorded for a failed check. |
 | Admin login is unavailable | Preview mode has no login. Use database mode, finish migration and restart the server after changing environment settings. |
 | Catalogue is empty | In database mode, create and publish an item through `/admin`. Preview mode needs a restart after its configuration is saved. |
 | Readiness returns 503 | Expected in preview mode; for a full install check database access and all required auth/contact settings. |

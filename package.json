@@ -11,13 +11,13 @@
     "doctor": "node ./scripts/doctor.mjs",
     "setup": "pnpm install --frozen-lockfile && pnpm -C apps/web exec prisma generate",
     "bootstrap": "node scripts/bootstrap.mjs",
-    "test:bootstrap": "node --test scripts/bootstrap.test.mjs",
+    "test:bootstrap": "node --test scripts/bootstrap.test.mjs scripts/bootstrap-recovery.test.mjs scripts/bootstrap-startup.test.mjs",
     "dev": "pnpm -C apps/web dev",
     "build": "pnpm -C apps/web build",
     "start": "pnpm -C apps/web start",
     "lint": "pnpm -C apps/web lint",
     "test": "pnpm -C apps/web test",
     "typecheck": "pnpm -C apps/web typecheck",
-    "ci:local": "pnpm install --frozen-lockfile && pnpm audit --audit-level low && pnpm -C apps/web exec prisma generate && pnpm -C apps/web lint && pnpm -C apps/web typecheck && pnpm -C apps/web test && pnpm -C apps/web build"
+    "ci:local": "pnpm install --frozen-lockfile && pnpm audit --audit-level low && pnpm -C apps/web exec prisma generate && pnpm -C apps/web lint && pnpm -C apps/web typecheck && pnpm -C apps/web test && pnpm run test:bootstrap && pnpm -C apps/web build"
   }
 }

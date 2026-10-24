@@ -12,6 +12,9 @@ on:
       - 'pnpm-workspace.yaml'
       - 'scripts/release-versions.cjs'
       - 'scripts/bootstrap*.mjs'
+      - 'scripts/fixtures/**'
+      - 'Start-SHOP.cmd'
+      - 'Setup-SHOP.cmd'
       - 'docs/INSTALL.md'
       - 'docs/RELEASE.md'
   push:

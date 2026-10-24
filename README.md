@@ -28,6 +28,8 @@ The current build is recorded as a **v1 proof of concept**, with its tested scop
 
 For the easiest setup, follow the [guided installer and team walkthrough](docs/INSTALL.md). After installing the pinned Node version, run `node scripts/bootstrap.mjs` and answer the questions. Existing configuration is protected, and no global pnpm setup is required when Corepack is available.
 
+Interrupted setup: run `node scripts/bootstrap.mjs --resume` to keep settings and repair/finish installation. After setup, double-click `Start-SHOP.cmd` on Windows or run `node scripts/bootstrap.mjs --start`. The launcher checks its port, rendered catalogue, readiness and administrator login before reporting success. `--verify-startup` runs the same checks and then stops the test server.
+
 Use the Node version in `.nvmrc` and the package-manager version pinned in `package.json` so development, CI and production stay on the same supported toolchain.
 
 ```bash
