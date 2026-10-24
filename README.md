@@ -26,6 +26,8 @@ The current build is recorded as a **v1 proof of concept**, with its tested scop
 
 ## Local setup
 
+For the easiest setup, follow the [guided installer and team walkthrough](docs/INSTALL.md). After installing the pinned Node version, run `node scripts/bootstrap.mjs` and answer the questions. Existing configuration is protected, and no global pnpm setup is required when Corepack is available.
+
 Use the Node version in `.nvmrc` and the package-manager version pinned in `package.json` so development, CI and production stay on the same supported toolchain.
 
 ```bash

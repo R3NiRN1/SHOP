@@ -10,6 +10,8 @@
     "preflight": "node ./scripts/run-preflight.js",
     "doctor": "node ./scripts/doctor.mjs",
     "setup": "pnpm install --frozen-lockfile && pnpm -C apps/web exec prisma generate",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "test:bootstrap": "node --test scripts/bootstrap.test.mjs",
     "dev": "pnpm -C apps/web dev",
     "build": "pnpm -C apps/web build",
     "start": "pnpm -C apps/web start",
