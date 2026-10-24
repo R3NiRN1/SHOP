@@ -4,9 +4,11 @@ This walkthrough installs the current catalogue and administrator app. Ordering 
 
 ## 1. Start here
 
-You need Git, Node.js **24.20.0** (the version in `.nvmrc`), an internet connection and a terminal. Node must include Corepack; if `corepack` is missing, ask your IT administrator to install the project's pinned Node toolchain. Reopen your terminal after installation. No global pnpm installation is needed: the wizard uses Corepack to select pnpm **11.25.0** from the repository.
+You need Node.js **24.20.0** (the version in `.nvmrc`), an internet connection and a terminal. Node must include Corepack; if `corepack` is missing, ask your IT administrator to install the project's pinned Node toolchain. Reopen your terminal after installation. No global pnpm installation is needed: the wizard uses Corepack to select pnpm **11.25.0** from the repository.
 
-Download the repository once:
+**Team ZIP route (no Git required):** extract the entire SHOP setup ZIP into a normal folder first; do not run files from inside the ZIP viewer. On Windows, double-click `Setup-SHOP.cmd`. On macOS/Linux, open a terminal in the extracted folder and run `node scripts/bootstrap.mjs`. Skip the Git commands below. Every computer runs its own questionnaire; the ZIP contains no preconfigured passwords or database credentials.
+
+Alternatively, if you use Git, download the repository once:
 
 ```sh
 git clone https://github.com/R3NiRN1/SHOP.git
