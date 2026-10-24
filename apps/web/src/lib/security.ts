@@ -1,10 +1,13 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Session } from 'next-auth';
 import { getAuthSecret, getConfiguredAdminEmail, getConfiguredAdminPassword } from './runtime-env';
 
-const digest = (value: string) => createHash('sha256').update(value, 'utf8').digest();
-
-export const safeEqual = (left: string, right: string) => timingSafeEqual(digest(left), digest(right));
+export const safeEqual = (left: string, right: string) => {
+  const leftBytes = Buffer.from(left, 'utf8');
+  const rightBytes = Buffer.from(right, 'utf8');
+  // Compare transient credentials directly; do not create fast password hashes.
+  return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
+};
 
 export const getAdminCredentialFingerprint = () => {
   const secret = getAuthSecret();

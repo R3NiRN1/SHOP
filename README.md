@@ -18,11 +18,11 @@ The current build is recorded as a **v1 proof of concept**, with its tested scop
 
 - Node.js 24.20.0 LTS
 - pnpm 11.25.0
-- Next.js 16.3.4
+- Next.js 16.4.3
 - NextAuth.js 4.24.15
-- React 19.2.8
-- Prisma 7.10.0 / PostgreSQL
-- Vitest 4.1.11
+- React 19.3.1
+- Prisma 7.10.1 / PostgreSQL
+- Vitest 4.1.12
 
 ## Local setup
 
@@ -31,8 +31,7 @@ Use the Node version in `.nvmrc` and the package-manager version pinned in `pack
 ```bash
 corepack enable
 pnpm run preflight
-pnpm install
-pnpm -C apps/web exec prisma generate
+pnpm run setup
 pnpm dev
 ```
 
@@ -78,14 +77,14 @@ If an existing database was created with `prisma db push`, do not run the initia
 
 ## Dependency security
 
-CI fails on high-severity package advisories. Narrow pnpm overrides are currently used for audited transitive releases of `picomatch`, `lodash`, `deepmerge-ts`, `browserslist`, `mysql2`, `@babel/core`, and `@humanfs/node` where upstream dependency chains have not yet resolved to the required version. Remove an override only when the direct upstream package incorporates an acceptable dependency and both the frozen install and audit remain clean.
+CI fails on package advisories at every severity and on registry errors. Version-specific Prisma build approvals and narrow transitive dependency overrides are recorded in `pnpm-workspace.yaml`. Remove an override only when the direct upstream package incorporates an acceptable dependency and both the frozen install and audit remain clean. Dependabot manages the pnpm workspace from its root to avoid duplicate update PRs.
 
 ## Verification
 
 ```bash
 pnpm run preflight
 pnpm install --frozen-lockfile
-pnpm audit --audit-level high --ignore-registry-errors
+pnpm audit --audit-level low
 pnpm -C apps/web exec prisma generate
 pnpm lint
 pnpm typecheck

@@ -4,6 +4,8 @@ node_modules/
 apps/web/.next/
 apps/web/node-compile-cache/
 *.tsbuildinfo
+apps/web/test-results/
+apps/web/playwright-report/
 
 # Env files
 .env

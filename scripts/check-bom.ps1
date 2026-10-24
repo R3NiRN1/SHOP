@@ -1,9 +1,24 @@
 $ErrorActionPreference = "Stop"
 
-$excludedPattern = "[\\/](node_modules|\\.next|\\.git|\\.turbo|dist|build)[\\/]"
-
-$targets = Get-ChildItem -Path . -Filter package.json -Recurse -File -ErrorAction SilentlyContinue |
-  Where-Object { $_.FullName -notmatch $excludedPattern } |
+$excludedDirectories = @('node_modules', '.next', '.git', '.turbo', 'dist', 'build')
+$pending = [System.Collections.Generic.Stack[string]]::new()
+$pending.Push((Get-Location).Path)
+# Prune dependency and build trees before descending, rather than enumerating
+# their contents and filtering afterwards (very slow on Windows).
+$workspaceFiles = @(while ($pending.Count -gt 0) {
+  foreach ($entry in Get-ChildItem -LiteralPath $pending.Pop() -Force) {
+    if ($entry.PSIsContainer) {
+      if ($entry.Name -notin $excludedDirectories -and
+          -not ($entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+        $pending.Push($entry.FullName)
+      }
+    } elseif ($entry.Name -in @('package.json', 'pnpm-workspace.yaml', 'yarn.lock', 'package-lock.json')) {
+      $entry
+    }
+  }
+})
+$targets = $workspaceFiles |
+  Where-Object { $_.Name -in @('package.json', 'pnpm-workspace.yaml') } |
   ForEach-Object { $_.FullName }
 
 $foundBom = $false
@@ -25,8 +40,7 @@ if (-not (Test-Path "pnpm-lock.yaml")) {
   exit 1
 }
 
-$disallowedLockfiles = Get-ChildItem -Path . -Include "yarn.lock","package-lock.json" -Recurse -File -ErrorAction SilentlyContinue |
-  Where-Object { $_.FullName -notmatch $excludedPattern }
+$disallowedLockfiles = @($workspaceFiles | Where-Object { $_.Name -in @('yarn.lock', 'package-lock.json') })
 
 if ($disallowedLockfiles.Count -gt 0) {
   $disallowedLockfiles | ForEach-Object { Write-Host "Unexpected lockfile: $($_.FullName)" }

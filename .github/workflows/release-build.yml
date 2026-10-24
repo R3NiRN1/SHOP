@@ -10,6 +10,7 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
+      - 'scripts/release-versions.cjs'
       - 'docs/RELEASE.md'
   push:
     branches: [main]
@@ -82,7 +83,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Dependency audit
-        run: pnpm audit --audit-level high --ignore-registry-errors
+        run: pnpm audit --audit-level low
 
       - name: Prisma generate
         run: pnpm -C apps/web exec prisma generate
@@ -133,12 +134,9 @@ jobs:
           prisma_schema_sha256=${schema_sha256}
           node=24.20.0
           pnpm=11.25.0
-          next=16.3.4
-          next_auth=4.24.15
-          react=19.2.8
-          prisma=7.10.0
           target=linux-x64
           EOF
+          node scripts/release-versions.cjs >> release-bundle/RELEASE-MANIFEST.txt
 
           server_rel="${server_path#release-bundle/}"
           archive="shop-web-${SOURCE_SHA:0:12}-linux-x64.tar.gz"

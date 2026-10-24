@@ -5,8 +5,7 @@ verifyDepsBeforeRun: warn
 
 overrides:
   'picomatch@2.3.1': 2.3.2
-  'picomatch@4.0.3': 4.0.4
-  'lodash@4.17.21': 4.18.0
+  'lodash@4.17.21': 4.18.1
   'deepmerge-ts@7.1.5': 8.0.1
   'browserslist': 4.28.8
   'mysql2': 3.24.2
@@ -14,13 +13,10 @@ overrides:
   '@humanfs/node@0.16.7': 0.16.8
   'sharp': 0.35.5
   'source-map-js': 1.2.2
-
-auditConfig:
-  # No patched release exists yet. This is a development-only transitive
-  # dependency of ESLint tooling; remove this exception when upstream fixes it.
-  ignoreGhsas:
-    - GHSA-vfj7-8cjw-p6xm
+  'vite@8.2.2': 8.2.4
+  'zod@4.3.6': 4.6.6
+  'fast-uri@3.1.8': 3.1.9
 
 allowBuilds:
-  '@prisma/engines@7.10.0': true
-  'prisma@7.10.0': true
+  '@prisma/engines@7.10.1': true
+  'prisma@7.10.1': true
