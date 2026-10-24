@@ -112,7 +112,7 @@ test('persists admin create, edit and delete through the browser UI', async ({ p
   await expect(page.getByRole('heading', { name: 'Manage varieties' })).toBeVisible();
   await page.waitForLoadState('networkidle');
   await page.getByLabel('Name').fill('Browser CRUD Bean');
-  await page.getByLabel('Slug').fill('browser-crud-bean');
+  await page.getByLabel('Catalogue ID (optional)').fill('browser-crud-bean');
   await page.getByLabel('Species').fill('Phaseolus vulgaris');
   await page.getByLabel('Description').fill('Created through Playwright.');
   await page.getByLabel('Price (£)').fill('12.34');
