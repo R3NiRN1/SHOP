@@ -1,0 +1,49 @@
+name: Temporary lockfile regeneration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/package.json'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/lockfile-rebuild.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+        with:
+          version: 11.25.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24.20.0
+
+      - name: Regenerate lockfile using pinned package manager
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Print regenerated lockfile in numbered chunks for safe capture
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const content = fs.readFileSync('pnpm-lock.yaml');
+          const chunks = content.toString('base64').match(/.{1,2048}/g) || [];
+          console.log('LOCKFILE_BEGIN ' + chunks.length);
+          chunks.forEach((chunk, i) => console.log('LOCKFILE_CHUNK ' + i + ' ' + chunk));
+          console.log('LOCKFILE_END');
+          NODE
+
+      - name: Audit every dependency
+        run: pnpm audit --audit-level low
