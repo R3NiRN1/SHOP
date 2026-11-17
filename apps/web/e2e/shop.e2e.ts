@@ -90,6 +90,58 @@ test('renders only published catalogue entries and presents no checkout flow', a
   await expect(readiness.json()).resolves.toEqual({ ready: true, kind: 'readiness' });
 });
 
+test('presents sold-out, low-stock, unknown-stock and draft seed states correctly', async ({ page }) => {
+  await prisma.variety.createMany({
+    data: [
+      {
+        slug: 'pilot-sold-out-bean',
+        name: 'Pilot Sold Out Bean',
+        species: 'Vicia faba',
+        price: '2.50',
+        stock: 0,
+        published: true,
+      },
+      {
+        slug: 'pilot-low-stock-kale',
+        name: 'Pilot Low Stock Kale',
+        species: 'Brassica oleracea',
+        price: '3.25',
+        stock: 3,
+        published: true,
+      },
+      {
+        slug: 'pilot-unknown-stock-squash',
+        name: 'Pilot Unknown Stock Squash',
+        species: 'Cucurbita maxima',
+        price: null,
+        stock: null,
+        published: true,
+      },
+      {
+        slug: 'pilot-draft-broad-bean',
+        name: 'Pilot Draft Broad Bean',
+        species: 'Vicia faba',
+        price: '2.75',
+        stock: 10,
+        published: false,
+      },
+    ],
+  });
+
+  await page.goto('/varieties');
+  const soldOut = page.locator('article').filter({ hasText: 'Pilot Sold Out Bean' });
+  const lowStock = page.locator('article').filter({ hasText: 'Pilot Low Stock Kale' });
+  const unknownStock = page.locator('article').filter({ hasText: 'Pilot Unknown Stock Squash' });
+
+  await expect(soldOut.getByRole('heading', { name: 'Pilot Sold Out Bean' })).toBeVisible();
+  await expect(soldOut).toContainText('Sold out');
+  await expect(lowStock).toContainText('Only 3 left');
+  await expect(unknownStock).toContainText('Price coming soon');
+  await expect(unknownStock).toContainText('Stock TBC');
+  await expect(page.getByText('Pilot Draft Broad Bean')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Enquire about this seed' })).toHaveCount(4);
+});
+
 test('rejects failed login and unauthenticated admin writes', async ({ page, request }) => {
   const unauthenticatedWrite = await request.post('/api/admin/varieties', {
     data: { slug: 'unauthorized', name: 'Unauthorized', published: true },
