@@ -58,6 +58,9 @@ jobs:
       - name: Unit tests
         run: pnpm -C apps/web test
 
+      - name: Guided installer regression tests
+        run: pnpm run test:bootstrap
+
       - name: Build
         run: pnpm -C apps/web build
 
