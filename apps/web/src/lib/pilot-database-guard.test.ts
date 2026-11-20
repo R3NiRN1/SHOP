@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertConnectedPilotIdentity, assertPilotDatabaseUrl } from "./pilot-database-guard";
+import { assertConnectedPilotIdentity, assertPilotDatabaseUrl, verifyConnectedPilotDatabase } from "./pilot-database-guard";
 
 const safe = "postgresql://shop_pilot:fictional@127.0.0.1:5432/shop_pilot_disposable";
 
@@ -54,5 +54,38 @@ describe("connected disposable PostgreSQL identity", () => {
     expect(() => assertConnectedPilotIdentity({ ...approved, ...change })).toThrow(
       "Connected database is not an approved disposable pilot",
     );
+  });
+});
+
+describe("live-session pilot identity verification", () => {
+  const identity = {
+    database: "shop_pilot_disposable", role: "shop_pilot",
+    isSuperuser: false, canCreateDatabase: false, canCreateRole: false,
+    disposableMarker: "SHOP_DISPOSABLE_PILOT_V1",
+  };
+  it("reads identity from a PostgreSQL session", async () => {
+    const queries: string[] = [];
+    await verifyConnectedPilotDatabase({
+      query: async (sql) => { queries.push(sql); return { rows: [identity] }; },
+    });
+    expect(queries).toHaveLength(1);
+    expect(queries[0]).toContain("current_database()");
+    expect(queries[0]).toContain("current_user");
+    expect(queries[0]).toContain("shobj_description");
+  });
+  it("rejects a missing database row", async () => {
+    await expect(verifyConnectedPilotDatabase({
+      query: async () => ({ rows: [] }),
+    })).rejects.toThrow("Connected database is not an approved disposable pilot");
+  });
+  it("rejects a mismatched database comment", async () => {
+    await expect(verifyConnectedPilotDatabase({
+      query: async () => ({ rows: [{ ...identity, disposableMarker: null }] }),
+    })).rejects.toThrow("Connected database is not an approved disposable pilot");
+  });
+  it("propagates connection failures without writing", async () => {
+    await expect(verifyConnectedPilotDatabase({
+      query: async () => { throw new Error("connection unavailable"); },
+    })).rejects.toThrow("connection unavailable");
   });
 });
