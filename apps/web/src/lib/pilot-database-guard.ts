@@ -79,3 +79,30 @@ export async function verifyConnectedPilotDatabase(client: {
   }
   assertConnectedPilotIdentity(result.rows[0] as ConnectedPilotIdentity);
 }
+
+
+/**
+ * Run future fixture writes only after checking the actual session inside
+ * the same transaction. The caller must supply a dedicated, exclusively held
+ * client (not a pool), and must not issue transaction control in writeFixtures.
+ * No loader is wired to this helper yet.
+ */
+export async function withVerifiedPilotTransaction<T>(
+  client: { query: (sql: string) => Promise<{ rows: unknown[] }> },
+  writeFixtures: (client: { query: (sql: string) => Promise<{ rows: unknown[] }> }) => Promise<T>,
+): Promise<T> {
+  await client.query("BEGIN");
+  try {
+    await verifyConnectedPilotDatabase(client);
+    const result = await writeFixtures(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Preserve the original failure; the caller must discard this client.
+    }
+    throw error;
+  }
+}
