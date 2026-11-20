@@ -52,3 +52,30 @@ export function assertConnectedPilotIdentity(identity: ConnectedPilotIdentity): 
     throw new Error("Connected database is not an approved disposable pilot");
   }
 }
+
+
+/**
+ * Read identity from the actual PostgreSQL session, not the connection URL.
+ * The database COMMENT is an operator-provisioned marker, never created here.
+ * A fixture writer must call this inside its own transaction on the SAME
+ * client and must not release that client before completing its writes.
+ */
+export async function verifyConnectedPilotDatabase(client: {
+  query: (sql: string) => Promise<{ rows: unknown[] }>;
+}): Promise<void> {
+  const result = await client.query(`
+    SELECT current_database() AS database,
+           current_user AS role,
+           r.rolsuper AS "isSuperuser",
+           r.rolcreatedb AS "canCreateDatabase",
+           r.rolcreaterole AS "canCreateRole",
+           shobj_description(d.oid, 'pg_database') AS "disposableMarker"
+    FROM pg_database d
+    JOIN pg_roles r ON r.rolname = current_user
+    WHERE d.datname = current_database()
+  `);
+  if (result.rows.length !== 1) {
+    throw new Error("Connected database is not an approved disposable pilot");
+  }
+  assertConnectedPilotIdentity(result.rows[0] as ConnectedPilotIdentity);
+}
