@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertConnectedPilotIdentity, assertPilotDatabaseUrl, verifyConnectedPilotDatabase } from "./pilot-database-guard";
+import { assertConnectedPilotIdentity, assertPilotDatabaseUrl, verifyConnectedPilotDatabase, withVerifiedPilotTransaction } from "./pilot-database-guard";
 
 const safe = "postgresql://shop_pilot:fictional@127.0.0.1:5432/shop_pilot_disposable";
 
@@ -87,5 +87,55 @@ describe("live-session pilot identity verification", () => {
     await expect(verifyConnectedPilotDatabase({
       query: async () => { throw new Error("connection unavailable"); },
     })).rejects.toThrow("connection unavailable");
+  });
+});
+
+describe("transaction-bound pilot verification", () => {
+  const identity = {
+    database: "shop_pilot_disposable", role: "shop_pilot",
+    isSuperuser: false, canCreateDatabase: false, canCreateRole: false,
+    disposableMarker: "SHOP_DISPOSABLE_PILOT_V1",
+  };
+  it("checks identity before writing and commits on success", async () => {
+    const calls: string[] = [];
+    const client = { query: async (sql: string) => {
+      calls.push(sql);
+      return { rows: sql.includes("current_database()") ? [identity] : [] };
+    } };
+    const result = await withVerifiedPilotTransaction(client, async (connection) => {
+      await connection.query("INSERT INTO fictional_fixture VALUES (1)");
+      return "ok";
+    });
+    expect(result).toBe("ok");
+    expect(calls[0]).toBe("BEGIN");
+    expect(calls[1]).toContain("current_database()");
+    expect(calls[2]).toContain("INSERT");
+    expect(calls[3]).toBe("COMMIT");
+  });
+  it("never calls the writer when connected identity fails", async () => {
+    const calls: string[] = [];
+    let wrote = false;
+    const client = { query: async (sql: string) => {
+      calls.push(sql);
+      return { rows: [] };
+    } };
+    await expect(withVerifiedPilotTransaction(client, async () => {
+      wrote = true;
+    })).rejects.toThrow("Connected database is not an approved disposable pilot");
+    expect(wrote).toBe(false);
+    expect(calls.at(-1)).toBe("ROLLBACK");
+    expect(calls).not.toContain("COMMIT");
+  });
+  it("rolls back a failed fixture callback", async () => {
+    const calls: string[] = [];
+    const client = { query: async (sql: string) => {
+      calls.push(sql);
+      return { rows: sql.includes("current_database()") ? [identity] : [] };
+    } };
+    await expect(withVerifiedPilotTransaction(client, async () => {
+      throw new Error("fixture rejected");
+    })).rejects.toThrow("fixture rejected");
+    expect(calls.at(-1)).toBe("ROLLBACK");
+    expect(calls).not.toContain("COMMIT");
   });
 });
