@@ -24,3 +24,31 @@ export function assertPilotDatabaseUrl(value: string | undefined): void {
     throw new Error("Pilot requires the dedicated local disposable database and role");
   }
 }
+
+/**
+ * A second, independent pre-write gate. The caller must obtain every field
+ * from the *same live PostgreSQL connection* used for subsequent fixture
+ * writes; never derive these values from the connection URL or user input.
+ * A disposable marker must be provisioned out-of-band by the pilot operator.
+ */
+export interface ConnectedPilotIdentity {
+  database: string;
+  role: string;
+  isSuperuser: boolean;
+  canCreateDatabase: boolean;
+  canCreateRole: boolean;
+  disposableMarker: string | null;
+}
+
+export function assertConnectedPilotIdentity(identity: ConnectedPilotIdentity): void {
+  if (
+    identity.database !== "shop_pilot_disposable" ||
+    identity.role !== "shop_pilot" ||
+    identity.isSuperuser !== false ||
+    identity.canCreateDatabase !== false ||
+    identity.canCreateRole !== false ||
+    identity.disposableMarker !== "SHOP_DISPOSABLE_PILOT_V1"
+  ) {
+    throw new Error("Connected database is not an approved disposable pilot");
+  }
+}
