@@ -37,6 +37,8 @@ export interface ConnectedPilotIdentity {
   isSuperuser: boolean;
   canCreateDatabase: boolean;
   canCreateRole: boolean;
+  canBypassRowSecurity: boolean;
+  canReplicate: boolean;
   disposableMarker: string | null;
 }
 
@@ -47,6 +49,8 @@ export function assertConnectedPilotIdentity(identity: ConnectedPilotIdentity): 
     identity.isSuperuser !== false ||
     identity.canCreateDatabase !== false ||
     identity.canCreateRole !== false ||
+    identity.canBypassRowSecurity !== false ||
+    identity.canReplicate !== false ||
     identity.disposableMarker !== "SHOP_DISPOSABLE_PILOT_V1"
   ) {
     throw new Error("Connected database is not an approved disposable pilot");
@@ -69,6 +73,8 @@ export async function verifyConnectedPilotDatabase(client: {
            r.rolsuper AS "isSuperuser",
            r.rolcreatedb AS "canCreateDatabase",
            r.rolcreaterole AS "canCreateRole",
+           r.rolbypassrls AS "canBypassRowSecurity",
+           r.rolreplication AS "canReplicate",
            shobj_description(d.oid, 'pg_database') AS "disposableMarker"
     FROM pg_database d
     JOIN pg_roles r ON r.rolname = current_user
