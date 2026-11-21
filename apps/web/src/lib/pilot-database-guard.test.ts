@@ -134,6 +134,29 @@ describe("transaction-bound pilot verification", () => {
     expect(calls.at(-1)).toBe("ROLLBACK");
     expect(calls).not.toContain("COMMIT");
   });
+  it("preserves the original failure when rollback also fails", async () => {
+    const calls: string[] = [];
+    const client = { query: async (sql: string) => {
+      calls.push(sql);
+      if (sql === "ROLLBACK") throw new Error("rollback unavailable");
+      return { rows: sql.includes("current_database()") ? [identity] : [] };
+    } };
+    await expect(withVerifiedPilotTransaction(client, async () => {
+      throw new Error("fixture rejected");
+    })).rejects.toThrow("fixture rejected");
+    expect(calls.at(-1)).toBe("ROLLBACK");
+    expect(calls).not.toContain("COMMIT");
+  });
+  it("does not invoke the writer if BEGIN fails", async () => {
+    let invoked = false;
+    const client = { query: async (_sql: string): Promise<{ rows: unknown[] }> => {
+      throw new Error("transaction unavailable");
+    } };
+    await expect(withVerifiedPilotTransaction(client, async () => {
+      invoked = true;
+    })).rejects.toThrow("transaction unavailable");
+    expect(invoked).toBe(false);
+  });
   it("rolls back a failed fixture callback", async () => {
     const calls: string[] = [];
     const client = { query: async (sql: string) => {
