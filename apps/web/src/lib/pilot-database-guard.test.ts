@@ -31,7 +31,7 @@ describe("disposable pilot database URL precondition", () => {
 describe("connected disposable PostgreSQL identity", () => {
   const approved = {
     database: "shop_pilot_disposable",
-    role: "shop_pilot",
+    role: "shop_pilot", sessionRole: "shop_pilot",
     isSuperuser: false,
     canCreateDatabase: false,
     canCreateRole: false,
@@ -57,6 +57,7 @@ describe("connected disposable PostgreSQL identity", () => {
   it.each([
     { database: "shop" },
     { role: "postgres" },
+    { sessionRole: "postgres" },
     { isSuperuser: true },
     { canCreateDatabase: true },
     { canCreateRole: true },
@@ -73,7 +74,7 @@ describe("connected disposable PostgreSQL identity", () => {
 
 describe("live-session pilot identity verification", () => {
   const identity = {
-    database: "shop_pilot_disposable", role: "shop_pilot",
+    database: "shop_pilot_disposable", role: "shop_pilot", sessionRole: "shop_pilot",
     isSuperuser: false, canCreateDatabase: false, canCreateRole: false,
     canBypassRowSecurity: false, canReplicate: false,
     disposableMarker: "SHOP_DISPOSABLE_PILOT_V1",
@@ -86,6 +87,7 @@ describe("live-session pilot identity verification", () => {
     expect(queries).toHaveLength(1);
     expect(queries[0]).toContain("current_database()");
     expect(queries[0]).toContain("current_user");
+    expect(queries[0]).toContain("session_user");
     expect(queries[0]).toContain("shobj_description");
     expect(queries[0]).toContain("rolbypassrls");
     expect(queries[0]).toContain("rolreplication");
@@ -109,7 +111,7 @@ describe("live-session pilot identity verification", () => {
 
 describe("transaction-bound pilot verification", () => {
   const identity = {
-    database: "shop_pilot_disposable", role: "shop_pilot",
+    database: "shop_pilot_disposable", role: "shop_pilot", sessionRole: "shop_pilot",
     isSuperuser: false, canCreateDatabase: false, canCreateRole: false,
     canBypassRowSecurity: false, canReplicate: false,
     disposableMarker: "SHOP_DISPOSABLE_PILOT_V1",
