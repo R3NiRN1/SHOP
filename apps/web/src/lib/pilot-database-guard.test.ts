@@ -92,6 +92,20 @@ describe("live-session pilot identity verification", () => {
     expect(queries[0]).toContain("rolbypassrls");
     expect(queries[0]).toContain("rolreplication");
   });
+  it("rejects ambiguous database identity rows before fixture writes", async () => {
+    const calls: string[] = [];
+    let wrote = false;
+    const client = { query: async (sql: string) => {
+      calls.push(sql);
+      return { rows: sql.includes("current_database()") ? [identity, identity] : [] };
+    } };
+    await expect(withVerifiedPilotTransaction(client, async () => {
+      wrote = true;
+    })).rejects.toThrow("Connected database is not an approved disposable pilot");
+    expect(wrote).toBe(false);
+    expect(calls.at(-1)).toBe("ROLLBACK");
+    expect(calls).not.toContain("COMMIT");
+  });
   it("rejects a missing database row", async () => {
     await expect(verifyConnectedPilotDatabase({
       query: async () => ({ rows: [] }),
