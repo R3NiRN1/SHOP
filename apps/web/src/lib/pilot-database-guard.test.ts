@@ -35,6 +35,8 @@ describe("connected disposable PostgreSQL identity", () => {
     isSuperuser: false,
     canCreateDatabase: false,
     canCreateRole: false,
+    canBypassRowSecurity: false,
+    canReplicate: false,
     disposableMarker: "SHOP_DISPOSABLE_PILOT_V1",
   } as const;
 
@@ -48,6 +50,8 @@ describe("connected disposable PostgreSQL identity", () => {
     { isSuperuser: true },
     { canCreateDatabase: true },
     { canCreateRole: true },
+    { canBypassRowSecurity: true },
+    { canReplicate: true },
     { disposableMarker: null },
     { disposableMarker: "SHOP_DISPOSABLE_PILOT_V2" },
   ])("fails closed for mismatched connected identity: %j", (change) => {
@@ -61,6 +65,7 @@ describe("live-session pilot identity verification", () => {
   const identity = {
     database: "shop_pilot_disposable", role: "shop_pilot",
     isSuperuser: false, canCreateDatabase: false, canCreateRole: false,
+    canBypassRowSecurity: false, canReplicate: false,
     disposableMarker: "SHOP_DISPOSABLE_PILOT_V1",
   };
   it("reads identity from a PostgreSQL session", async () => {
@@ -72,6 +77,8 @@ describe("live-session pilot identity verification", () => {
     expect(queries[0]).toContain("current_database()");
     expect(queries[0]).toContain("current_user");
     expect(queries[0]).toContain("shobj_description");
+    expect(queries[0]).toContain("rolbypassrls");
+    expect(queries[0]).toContain("rolreplication");
   });
   it("rejects a missing database row", async () => {
     await expect(verifyConnectedPilotDatabase({
@@ -94,6 +101,7 @@ describe("transaction-bound pilot verification", () => {
   const identity = {
     database: "shop_pilot_disposable", role: "shop_pilot",
     isSuperuser: false, canCreateDatabase: false, canCreateRole: false,
+    canBypassRowSecurity: false, canReplicate: false,
     disposableMarker: "SHOP_DISPOSABLE_PILOT_V1",
   };
   it("checks identity before writing and commits on success", async () => {
