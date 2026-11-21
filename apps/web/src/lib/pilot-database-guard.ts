@@ -34,6 +34,7 @@ export function assertPilotDatabaseUrl(value: string | undefined): void {
 export interface ConnectedPilotIdentity {
   database: string;
   role: string;
+  sessionRole: string;
   isSuperuser: boolean;
   canCreateDatabase: boolean;
   canCreateRole: boolean;
@@ -46,6 +47,7 @@ export function assertConnectedPilotIdentity(identity: ConnectedPilotIdentity): 
   if (
     identity.database !== "shop_pilot_disposable" ||
     identity.role !== "shop_pilot" ||
+    identity.sessionRole !== "shop_pilot" ||
     identity.isSuperuser !== false ||
     identity.canCreateDatabase !== false ||
     identity.canCreateRole !== false ||
@@ -70,6 +72,7 @@ export async function verifyConnectedPilotDatabase(client: {
   const result = await client.query(`
     SELECT current_database() AS database,
            current_user AS role,
+           session_user AS "sessionRole",
            r.rolsuper AS "isSuperuser",
            r.rolcreatedb AS "canCreateDatabase",
            r.rolcreaterole AS "canCreateRole",
