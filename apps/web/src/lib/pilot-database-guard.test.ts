@@ -45,6 +45,16 @@ describe("connected disposable PostgreSQL identity", () => {
   });
 
   it.each([
+    "isSuperuser", "canCreateDatabase", "canCreateRole",
+    "canBypassRowSecurity", "canReplicate",
+  ] as const)("rejects an absent privilege field: %s", (field) => {
+    const incomplete: Record<string, unknown> = { ...approved };
+    delete incomplete[field];
+    expect(() => assertConnectedPilotIdentity(incomplete as unknown as typeof approved))
+      .toThrow("Connected database is not an approved disposable pilot");
+  });
+
+  it.each([
     { database: "shop" },
     { role: "postgres" },
     { isSuperuser: true },
