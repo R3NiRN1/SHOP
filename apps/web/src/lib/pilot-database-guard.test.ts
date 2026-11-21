@@ -159,6 +159,18 @@ describe("transaction-bound pilot verification", () => {
     expect(calls.at(-1)).toBe("ROLLBACK");
     expect(calls).not.toContain("COMMIT");
   });
+  it("does not report success when COMMIT fails", async () => {
+    const calls: string[] = [];
+    const client = { query: async (sql: string) => {
+      calls.push(sql);
+      if (sql === "COMMIT") throw new Error("commit unavailable");
+      return { rows: sql.includes("current_database()") ? [identity] : [] };
+    } };
+    await expect(withVerifiedPilotTransaction(client, async () => "ok"))
+      .rejects.toThrow("commit unavailable");
+    expect(calls).toContain("COMMIT");
+    expect(calls.at(-1)).toBe("ROLLBACK");
+  });
   it("does not invoke the writer if BEGIN fails", async () => {
     let invoked = false;
     const client = { query: async (_sql: string): Promise<{ rows: unknown[] }> => {
